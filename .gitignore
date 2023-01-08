@@ -1,0 +1,14 @@
+/PumpkinMoon.Core/bin
+/PumpkinMoon.Networking/bin
+/PumpkinMoon.Core/obj
+/PumpkinMoon.Networking/obj
+/PumpkinMoon.CodeGen/bin
+/PumpkinMoon.CodeGen/obj
+/PumpkinMoon.AOP/obj
+/PumpkinMoon.AOP/bin
+/PumpkinMoon.AOP.Executable/obj
+/PumpkinMoon.AOP.Executable/bin
+/PumpkinMoon/.idea
+/PumpkinMoon/.vs
+/PumpkinMoon/bin
+/PumpkinMoon/obj
