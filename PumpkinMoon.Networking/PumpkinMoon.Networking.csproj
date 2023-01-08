@@ -8,7 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\PumpkinMoon.AOP\PumpkinMoon.AOP.csproj" />
     <ProjectReference Include="..\PumpkinMoon.Core\PumpkinMoon.Core.csproj" />
   </ItemGroup>
 
