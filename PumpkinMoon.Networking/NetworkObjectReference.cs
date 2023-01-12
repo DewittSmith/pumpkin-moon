@@ -2,9 +2,9 @@
 
 namespace PumpkinMoon.Networking
 {
-    public readonly struct NetworkObjectReference : IReference<uint, NetworkObject>
+    public readonly struct NetworkObjectReference : IReference<int, NetworkObject>
     {
-        public uint ObjectId { get; }
+        public int ObjectId { get; }
 
         public NetworkObjectReference(NetworkObject networkObject)
         {
