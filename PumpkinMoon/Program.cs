@@ -31,7 +31,7 @@ namespace PumpkinMoon
                 Console.WriteLine($"[Client {sender}]: {unsafeString}");
             });
 
-            NetworkObject networkObject = new NetworkObject();
+            NetworkObject networkObject = new NetworkObject(0);
             Test test = new Test();
 
             networkObject.AddRpc(test.CallClient);

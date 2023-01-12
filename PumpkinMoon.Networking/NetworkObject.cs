@@ -6,10 +6,10 @@ namespace PumpkinMoon.Networking
 {
     public class NetworkObject
     {
-        internal static readonly Dictionary<uint, NetworkObject> NetworkObjectsDictionary =
-            new Dictionary<uint, NetworkObject>();
+        internal static readonly Dictionary<int, NetworkObject> NetworkObjectsDictionary =
+            new Dictionary<int, NetworkObject>();
 
-        public readonly uint NetworkId;
+        public readonly int NetworkId;
 
         private readonly List<NetworkVariableBase> networkVariables = new List<NetworkVariableBase>();
         private readonly List<Delegate> rpcDelegates = new List<Delegate>();
@@ -59,16 +59,8 @@ namespace PumpkinMoon.Networking
             }
         }
 
-        public NetworkObject()
+        public NetworkObject(int id)
         {
-            uint id = (uint)NetworkObjectsDictionary.Count;
-
-            while (NetworkObjectsDictionary.ContainsKey(id))
-            {
-                id += 1;
-            }
-
-            NetworkObjectsDictionary[id] = this;
             NetworkId = id;
         }
 
