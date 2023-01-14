@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\PumpkinMoon.Loading\PumpkinMoon.Loading.csproj" />
     <ProjectReference Include="..\PumpkinMoon.Networking\PumpkinMoon.Networking.csproj" />
   </ItemGroup>
 
