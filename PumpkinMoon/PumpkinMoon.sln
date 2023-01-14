@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PumpkinMoon.Core", "..\Pump
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PumpkinMoon.Networking", "..\PumpkinMoon.Networking\PumpkinMoon.Networking.csproj", "{C69796B7-DA9B-4906-AAE9-A81E7AA4CA64}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PumpkinMoon.Loading", "..\PumpkinMoon.Loading\PumpkinMoon.Loading.csproj", "{BD57B876-016B-411E-BA65-0121D9A7E63D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{C69796B7-DA9B-4906-AAE9-A81E7AA4CA64}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C69796B7-DA9B-4906-AAE9-A81E7AA4CA64}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C69796B7-DA9B-4906-AAE9-A81E7AA4CA64}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BD57B876-016B-411E-BA65-0121D9A7E63D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BD57B876-016B-411E-BA65-0121D9A7E63D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BD57B876-016B-411E-BA65-0121D9A7E63D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BD57B876-016B-411E-BA65-0121D9A7E63D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

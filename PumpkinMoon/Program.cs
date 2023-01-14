@@ -1,7 +1,10 @@
 ﻿using System;
+using System.IO;
 using PumpkinMoon.Core.Diagnostics;
 using PumpkinMoon.Core.Serialization.Buffer;
 using PumpkinMoon.Core.Unsafe;
+using PumpkinMoon.Loading;
+using PumpkinMoon.Loading.Loaders;
 using PumpkinMoon.Networking;
 using PumpkinMoon.Networking.Time;
 using PumpkinMoon.Networking.Transports;
@@ -42,6 +45,11 @@ namespace PumpkinMoon
             networkObject.AddVariable(netVar);
 
             netVar.ValueChanged += value => Console.WriteLine($"{nameof(netVar)} changed to {value}");
+
+            DataLoader dataLoader = new DataLoader();
+            dataLoader.RegisterLoader<TextLoader>(".cs");
+
+            dataLoader.LazyCreated += OnLazyCreated;
 
             string input;
             do
@@ -165,6 +173,18 @@ namespace PumpkinMoon
                             Ping(id);
                             break;
                         }
+                        case "read":
+                        {
+                            string path = args[1];
+                            dataLoader.LoadEntry(path);
+                            break;
+                        }
+                        case "read_dir":
+                        {
+                            string path = args[1];
+                            dataLoader.LoadDirectory(path);
+                            break;
+                        }
                     }
                 }
                 catch (Exception e)
@@ -172,6 +192,11 @@ namespace PumpkinMoon
                     Console.WriteLine(e);
                 }
             } while (input != "exit");
+        }
+
+        private static void OnLazyCreated(string path, string namespacedId, Type type)
+        {
+            Console.WriteLine($"Loaded \"{Path.GetFileName(path)}\" with id \"{namespacedId}\" as \"{type.Name}\"");
         }
 
         private static async void Ping(uint id)
