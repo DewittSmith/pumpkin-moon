@@ -225,6 +225,11 @@ namespace PumpkinMoon.Networking
                     connectMessage = new ConnectMessage(connectedClient);
                     MessagingSystem.SendMessage(connectMessage, clientId);
                 }
+
+                foreach (NetworkObject networkObject in NetworkObject.NetworkObjectsDictionary.Values)
+                {
+                    SyncNetworkVariables(networkObject, true);
+                }
             }
 
             Debug.LogInfo($"Client {clientId} connected");
@@ -291,33 +296,38 @@ namespace PumpkinMoon.Networking
                     continue;
                 }
 
-                for (int i = 0; i < networkObject.NetworkVariables.Count; ++i)
+                SyncNetworkVariables(networkObject);
+            }
+        }
+
+        private void SyncNetworkVariables(NetworkObject networkObject, bool force = false)
+        {
+            for (int i = 0; i < networkObject.NetworkVariables.Count; ++i)
+            {
+                BufferWriter writer = new BufferWriter();
+
+                NetworkVariableBase variable = networkObject.NetworkVariables[i];
+
+                if (!force && !variable.IsDirty)
                 {
-                    BufferWriter writer = new BufferWriter();
-
-                    NetworkVariableBase variable = networkObject.NetworkVariables[i];
-
-                    if (!variable.IsDirty)
-                    {
-                        continue;
-                    }
-
-                    variable.WriteDelta(ref writer);
-                    int length = writer.ToArray(SendBuffer);
-
-                    VariableReference variableReference = new VariableReference(networkObject, variable);
-                    VariableMessage variableMessage = new VariableMessage(variableReference,
-                        new ArraySegment<byte>(SendBuffer, 0, length));
-
-                    if (!connectedClients.Contains(ServerClientId))
-                    {
-                        MessagingSystem.SendMessage(variableMessage, ServerClientId);
-                    }
-
-                    MessagingSystem.SendMessage(variableMessage, ConnectedClients);
-
-                    writer.Dispose();
+                    continue;
                 }
+
+                variable.WriteDelta(ref writer);
+                int length = writer.ToArray(SendBuffer);
+
+                VariableReference variableReference = new VariableReference(networkObject, variable);
+                VariableMessage variableMessage = new VariableMessage(variableReference,
+                    new ArraySegment<byte>(SendBuffer, 0, length));
+
+                if (!connectedClients.Contains(ServerClientId))
+                {
+                    MessagingSystem.SendMessage(variableMessage, ServerClientId);
+                }
+
+                MessagingSystem.SendMessage(variableMessage, ConnectedClients);
+
+                writer.Dispose();
             }
         }
     }
