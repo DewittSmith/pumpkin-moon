@@ -27,12 +27,13 @@ namespace PumpkinMoon.Loading
             fileReader = new DefaultFileReader();
         }
 
-        public DataLoader(INamespacedIdProvider namespacedIdProvider, IDirectoryEnumerator directoryEnumerator,
-            IFileReader fileReader)
+        public DataLoader(INamespacedIdProvider namespacedIdProvider = null,
+            IDirectoryEnumerator directoryEnumerator = null,
+            IFileReader fileReader = null)
         {
-            this.namespacedIdProvider = namespacedIdProvider;
-            this.directoryEnumerator = directoryEnumerator;
-            this.fileReader = fileReader;
+            this.namespacedIdProvider = namespacedIdProvider ?? new DefaultNamespaceIdProvider();
+            this.directoryEnumerator = directoryEnumerator ?? new DefaultDirectoryEnumerator();
+            this.fileReader = fileReader ?? new DefaultFileReader();
         }
 
         public void RegisterLoader<TLoader>(string extension) where TLoader : ILoader, new()
