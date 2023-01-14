@@ -29,11 +29,6 @@ namespace PumpkinMoon.Networking.Variables
 
         public override void WriteDelta(ref BufferWriter writer)
         {
-            if (!IsDirty)
-            {
-                return;
-            }
-
             IsDirty = false;
             writer.WriteUnmanaged(internalValue);
         }

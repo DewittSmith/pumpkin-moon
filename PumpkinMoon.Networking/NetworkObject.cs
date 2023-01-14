@@ -62,6 +62,7 @@ namespace PumpkinMoon.Networking
         public NetworkObject(int id)
         {
             NetworkId = id;
+            NetworkObjectsDictionary[NetworkId] = this;
         }
 
         ~NetworkObject()
