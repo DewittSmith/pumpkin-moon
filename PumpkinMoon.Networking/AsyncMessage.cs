@@ -1,70 +1,141 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using PumpkinMoon.Core.Serialization.Buffer;
 
 namespace PumpkinMoon.Networking
 {
-    public struct AsyncMessage
+    public class AsyncMessage : IDisposable
     {
-        public readonly struct Awaiter : INotifyCompletion
+        public readonly struct Handler
         {
-            private readonly AsyncMessage asyncMessage;
-
-            public Awaiter(AsyncMessage asyncMessage)
+            public readonly struct Awaiter : INotifyCompletion
             {
-                this.asyncMessage = asyncMessage;
-            }
+                private readonly Handler target;
 
-            public bool IsCompleted => asyncMessage.isCompleted;
-
-            public void OnCompleted(Action continuation)
-            {
-                while (!asyncMessage.isCompleted)
+                public Awaiter(Handler target)
                 {
+                    this.target = target;
                 }
 
-                continuation?.Invoke();
+                public bool IsCompleted => !target.target.isPendingResponse;
+
+                public void OnCompleted(Action continuation)
+                {
+                    while (!IsCompleted)
+                    {
+                    }
+
+                    continuation?.Invoke();
+                }
+
+                public BufferReader GetResult()
+                {
+                    return target.target.result;
+                }
             }
 
-            public BufferReader GetResult()
+            private readonly AsyncMessage target;
+
+            public Handler(AsyncMessage target)
             {
-                return asyncMessage.result;
+                this.target = target;
+            }
+
+            public Awaiter GetAwaiter()
+            {
+                return new Awaiter(this);
             }
         }
 
-        private bool isCompleted;
-        private BufferReader result;
+        private readonly NetworkObject owner;
+        private readonly Delegate rpcHandler;
+
         private readonly string messageName;
 
-        public AsyncMessage(string messageName, in BufferWriter payload, IReadOnlyList<uint> targetClients) : this()
+        private bool isPendingResponse;
+
+        private BufferReader result;
+
+        public AsyncMessage(string messageName)
         {
             this.messageName = messageName;
-            isCompleted = false;
-
             NetworkManager.Instance.MessagingSystem.SubscribeToMessage(messageName, OnMessageReceived);
-            NetworkManager.Instance.MessagingSystem.SendMessage(messageName, payload, targetClients);
         }
 
-        public AsyncMessage(string messageName, in BufferWriter payload, uint targetClient) : this()
+        public AsyncMessage(NetworkObject owner, Delegate rpcHandler)
         {
-            this.messageName = messageName;
-            isCompleted = false;
+            this.owner = owner;
+            this.rpcHandler = rpcHandler;
 
+            messageName = rpcHandler.Method.Name + "_Async";
+
+            owner.AddRpc(rpcHandler);
             NetworkManager.Instance.MessagingSystem.SubscribeToMessage(messageName, OnMessageReceived);
-            NetworkManager.Instance.MessagingSystem.SendMessage(messageName, payload, targetClient);
+        }
+
+        public Handler Call(uint targetClientId, in BufferWriter writer)
+        {
+            isPendingResponse = true;
+            NetworkManager.Instance.MessagingSystem.SendMessage(messageName, writer, targetClientId);
+            return new Handler(this);
+        }
+
+        public Handler Call(uint targetClientId)
+        {
+            isPendingResponse = true;
+            NetworkManager.Instance.MessagingSystem.SendMessage(messageName, default, targetClientId);
+            return new Handler(this);
+        }
+
+        public Handler Call(uint targetClientId, params object[] parameters)
+        {
+            using BufferWriter writer = new BufferWriter();
+
+            for (int i = 0; i < parameters.Length; ++i)
+            {
+                writer.WriteObject(parameters[i].GetType(), parameters[i]);
+            }
+
+            Call(targetClientId, writer);
+
+            return new Handler(this);
         }
 
         private void OnMessageReceived(uint sender, BufferReader payload)
         {
-            NetworkManager.Instance.MessagingSystem.UnsubscribeFromMessage(messageName, OnMessageReceived);
-            isCompleted = true;
-            result = payload;
+            if (isPendingResponse)
+            {
+                this.result = payload;
+                isPendingResponse = false;
+                return;
+            }
+
+            if (rpcHandler == null)
+            {
+                NetworkManager.Instance.MessagingSystem.SendMessage(messageName, default, sender);
+                return;
+            }
+
+            var types = Array.ConvertAll(rpcHandler.Method.GetParameters(), input => input.ParameterType);
+            object[] parameters = new object[types.Length];
+
+            for (int i = 0; i < parameters.Length; ++i)
+            {
+                payload.ReadObject(types[i], out parameters[i]);
+            }
+
+            object result = rpcHandler.DynamicInvoke(parameters);
+
+            using BufferWriter writer = new BufferWriter();
+            writer.WriteObject(result.GetType(), result);
+
+            NetworkManager.Instance.MessagingSystem.SendMessage(messageName, writer, sender);
         }
 
-        public Awaiter GetAwaiter()
+        public void Dispose()
         {
-            return new Awaiter(this);
+            result.Dispose();
+            NetworkManager.Instance.MessagingSystem.UnsubscribeFromMessage(messageName, OnMessageReceived);
         }
     }
 }
