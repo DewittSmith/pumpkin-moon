@@ -11,7 +11,7 @@ using PumpkinMoon.Networking.Variables;
 
 namespace PumpkinMoon.Networking
 {
-    public class NetworkManager
+    public class NetworkManager : IDisposable
     {
         private const string PingMessage = "PumpkinMoon_Ping";
 
@@ -37,7 +37,9 @@ namespace PumpkinMoon.Networking
         public IReadOnlyList<uint> ConnectedClients => connectedClients;
 
         public uint LocalClientId { get; private set; }
-        public uint ServerClientId { get; private set; }
+        public uint ServerClientId => 0;
+
+        private readonly AsyncMessage pingMessage;
 
         public NetworkManager(INetworkTransport transport, ITickSystem tickSystem)
         {
@@ -64,25 +66,7 @@ namespace PumpkinMoon.Networking
             MessagingSystem.ConnectMessageReceived += OnConnectMessageReceived;
             MessagingSystem.DisconnectMessageReceived += OnDisconnectMessageReceived;
 
-            MessagingSystem.SubscribeToMessage(PingMessage, OnPingMessageReceived);
-        }
-
-        ~NetworkManager()
-        {
-            TickSystem.Tick -= OnTick;
-
-            transport.ClientConnected -= OnClientConnected;
-            transport.ClientDisconnected -= OnClientDisconnected;
-
-            MessagingSystem.ConnectMessageReceived -= OnConnectMessageReceived;
-            MessagingSystem.DisconnectMessageReceived -= OnDisconnectMessageReceived;
-
-            transport.Shutdown();
-
-            if (transport is IDisposable disposable)
-            {
-                disposable.Dispose();
-            }
+            pingMessage = new AsyncMessage(PingMessage);
         }
 
         public bool StartServer()
@@ -169,7 +153,6 @@ namespace PumpkinMoon.Networking
             Debug.LogInfo("Shut down network manager");
         }
 
-        private bool capturePingMessage;
 
         public async Task<int> Ping(uint clientId)
         {
@@ -179,24 +162,10 @@ namespace PumpkinMoon.Networking
             }
 
             DateTime sendTime = DateTime.Now;
-
-            capturePingMessage = true;
-            await new AsyncMessage(PingMessage, default, clientId);
-            capturePingMessage = false;
-
+            await pingMessage.Call(clientId);
             DateTime receiveTime = DateTime.Now;
 
             return (receiveTime - sendTime).Milliseconds;
-        }
-
-        private void OnPingMessageReceived(uint sender, BufferReader payload)
-        {
-            if (capturePingMessage)
-            {
-                return;
-            }
-
-            MessagingSystem.SendMessage(PingMessage, default, sender);
         }
 
         private void OnClientConnected(uint clientId)
@@ -328,6 +297,27 @@ namespace PumpkinMoon.Networking
                 MessagingSystem.SendMessage(variableMessage, ConnectedClients);
 
                 writer.Dispose();
+            }
+        }
+
+        public void Dispose()
+        {
+            MessagingSystem.Dispose();
+            pingMessage.Dispose();
+
+            TickSystem.Tick -= OnTick;
+
+            transport.ClientConnected -= OnClientConnected;
+            transport.ClientDisconnected -= OnClientDisconnected;
+
+            MessagingSystem.ConnectMessageReceived -= OnConnectMessageReceived;
+            MessagingSystem.DisconnectMessageReceived -= OnDisconnectMessageReceived;
+
+            transport.Shutdown();
+
+            if (transport is IDisposable disposable)
+            {
+                disposable.Dispose();
             }
         }
     }

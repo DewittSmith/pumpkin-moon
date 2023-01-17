@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 namespace PumpkinMoon.Networking.Time
 {
-    public class AsyncTickSystem : ITickSystem
+    public class AsyncTickSystem : ITickSystem, IDisposable
     {
         public event ITickSystem.TickDelegate Tick;
         public int Framerate { get; }
@@ -30,7 +30,7 @@ namespace PumpkinMoon.Networking.Time
             }
         }
 
-        ~AsyncTickSystem()
+        public void Dispose()
         {
             isRunning = false;
         }

@@ -9,7 +9,7 @@ using PumpkinMoon.Networking.Variables;
 
 namespace PumpkinMoon.Networking.Messaging
 {
-    public class MessagingSystem
+    public class MessagingSystem : IDisposable
     {
         private static readonly byte[] SendBuffer = new byte[ushort.MaxValue];
 
@@ -29,11 +29,6 @@ namespace PumpkinMoon.Networking.Messaging
             namedMessageDelegates = new Dictionary<string, MessageDelegate>();
 
             transport.MessageReceived += OnMessageReceived;
-        }
-
-        ~MessagingSystem()
-        {
-            transport.MessageReceived -= OnMessageReceived;
         }
 
         public void SubscribeToMessage(string message, MessageDelegate callback)
@@ -207,6 +202,11 @@ namespace PumpkinMoon.Networking.Messaging
                     }
                 }
             }
+        }
+
+        public void Dispose()
+        {
+            transport.MessageReceived -= OnMessageReceived;
         }
     }
 }

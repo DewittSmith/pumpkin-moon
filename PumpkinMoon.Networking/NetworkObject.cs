@@ -4,7 +4,7 @@ using PumpkinMoon.Networking.Variables;
 
 namespace PumpkinMoon.Networking
 {
-    public class NetworkObject
+    public class NetworkObject : IDisposable
     {
         internal static readonly Dictionary<int, NetworkObject> NetworkObjectsDictionary =
             new Dictionary<int, NetworkObject>();
@@ -65,11 +65,6 @@ namespace PumpkinMoon.Networking
             NetworkObjectsDictionary[NetworkId] = this;
         }
 
-        ~NetworkObject()
-        {
-            NetworkObjectsDictionary.Remove(NetworkId);
-        }
-
         public bool AddVariable(NetworkVariableBase networkVariable)
         {
             if (networkVariables.Contains(networkVariable))
@@ -112,6 +107,11 @@ namespace PumpkinMoon.Networking
 
             rpcDelegates.Remove(rpcDelegate);
             return true;
+        }
+
+        public void Dispose()
+        {
+            NetworkObjectsDictionary.Remove(NetworkId);
         }
     }
 }
