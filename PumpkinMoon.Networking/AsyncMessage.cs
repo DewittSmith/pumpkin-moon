@@ -47,7 +47,6 @@ namespace PumpkinMoon.Networking
             }
         }
 
-        private readonly NetworkObject owner;
         private readonly Delegate rpcHandler;
 
         private readonly string messageName;
@@ -64,7 +63,6 @@ namespace PumpkinMoon.Networking
 
         public AsyncMessage(NetworkObject owner, Delegate rpcHandler)
         {
-            this.owner = owner;
             this.rpcHandler = rpcHandler;
 
             messageName = rpcHandler.Method.Name + "_Async";
