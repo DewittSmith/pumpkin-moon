@@ -14,8 +14,19 @@ namespace PumpkinMoon.Networking
         private readonly List<NetworkVariableBase> networkVariables = new List<NetworkVariableBase>();
         private readonly List<Delegate> rpcDelegates = new List<Delegate>();
 
+        private readonly NetworkVariableUnmanaged<int> ownerClientId = new NetworkVariableUnmanaged<int>();
+
+        public int OwnerClientId => ownerClientId.Value;
+        public bool IsOwner => ownerClientId.Value == NetworkManager.Instance.LocalClientId;
+
         internal IReadOnlyList<NetworkVariableBase> NetworkVariables => networkVariables;
         internal IReadOnlyList<Delegate> RpcDelegates => rpcDelegates;
+
+        public event NetworkVariableUnmanaged<int>.ValueChangedDelegate OwnerClientIdChanged
+        {
+            add => ownerClientId.ValueChanged += value;
+            remove => ownerClientId.ValueChanged -= value;
+        }
 
         internal int GetNetworkVariableIndex(NetworkVariableBase networkVariable)
         {
@@ -63,6 +74,8 @@ namespace PumpkinMoon.Networking
         {
             NetworkId = id;
             NetworkObjectsDictionary[NetworkId] = this;
+
+            networkVariables.Add(ownerClientId);
         }
 
         public bool AddVariable(NetworkVariableBase networkVariable)
@@ -107,6 +120,11 @@ namespace PumpkinMoon.Networking
 
             rpcDelegates.Remove(rpcDelegate);
             return true;
+        }
+
+        public void ChangeOwnership(int ownerId)
+        {
+            ownerClientId.Value = ownerId;
         }
 
         public void Dispose()

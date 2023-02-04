@@ -6,14 +6,14 @@ namespace PumpkinMoon.Networking.Messaging.Messages
     {
         private MessageType messageType;
 
-        private uint senderClientId;
-        private uint targetClientId;
+        private int senderClientId;
+        private int targetClientId;
 
         public MessageType MessageType => messageType;
-        public uint SenderClientId => senderClientId;
-        public uint TargetClientId => targetClientId;
+        public int SenderClientId => senderClientId;
+        public int TargetClientId => targetClientId;
 
-        public NetworkMessageHeader(MessageType messageType, uint senderClientId, uint targetClientId)
+        public NetworkMessageHeader(MessageType messageType, int senderClientId, int targetClientId)
         {
             this.messageType = messageType;
             this.senderClientId = senderClientId;

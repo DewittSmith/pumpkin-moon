@@ -8,10 +8,10 @@ namespace PumpkinMoon.Networking
 {
     public static class Rpc
     {
-        private static readonly uint[] ServerTarget = { 0u };
+        private static readonly int[] ServerTarget = { 0 };
         private static readonly byte[] SendBuffer = new byte[ushort.MaxValue];
 
-        private static void CallRpc(NetworkObject owner, Delegate rpcDelegate, IReadOnlyList<uint> targetClients,
+        private static void CallRpc(NetworkObject owner, Delegate rpcDelegate, IReadOnlyList<int> targetClients,
             object[] arguments)
         {
             using BufferWriter writer = new BufferWriter();
@@ -59,7 +59,7 @@ namespace PumpkinMoon.Networking
             var connectedClients = NetworkManager.Instance.ConnectedClients;
             CallRpc(owner, rpcDelegate, connectedClients, arguments);
 
-            if (!connectedClients.Contains(0u))
+            if (!connectedClients.Contains(0))
             {
                 CallRpc(owner, rpcDelegate, ServerTarget, arguments);
             }

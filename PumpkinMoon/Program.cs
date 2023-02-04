@@ -169,7 +169,7 @@ namespace PumpkinMoon
                         }
                         case "ping":
                         {
-                            uint id = uint.Parse(args[1]);
+                            int id = int.Parse(args[1]);
                             Ping(id);
                             break;
                         }
@@ -199,7 +199,7 @@ namespace PumpkinMoon
             Console.WriteLine($"Loaded \"{Path.GetFileName(path)}\" with id \"{namespacedId}\" as \"{type.Name}\"");
         }
 
-        private static async void Ping(uint id)
+        private static async void Ping(int id)
         {
             int ping = await NetworkManager.Instance.Ping(id);
             Console.WriteLine($"Ping to {id} is {ping} ms");

@@ -28,7 +28,7 @@ namespace PumpkinMoon.Networking.Transports
 
         private Socket socket;
 
-        private readonly Dictionary<uint, Socket> handlers;
+        private readonly Dictionary<int, Socket> handlers;
 
         private readonly byte[] receiveBuffer;
 
@@ -39,7 +39,7 @@ namespace PumpkinMoon.Networking.Transports
 
             Config = new SocketConfig();
 
-            handlers = new Dictionary<uint, Socket>();
+            handlers = new Dictionary<int, Socket>();
         }
 
         public event INetworkTransport.NetworkMessageDelegate MessageReceived;
@@ -132,7 +132,7 @@ namespace PumpkinMoon.Networking.Transports
             return false;
         }
 
-        public bool Send(uint clientId, ArraySegment<byte> payload)
+        public bool Send(int clientId, ArraySegment<byte> payload)
         {
             try
             {
@@ -155,7 +155,7 @@ namespace PumpkinMoon.Networking.Transports
             return false;
         }
 
-        public void DisconnectRemoteClient(uint clientId)
+        public void DisconnectRemoteClient(int clientId)
         {
             if (handlers.TryGetValue(clientId, out Socket handler))
             {
@@ -176,7 +176,7 @@ namespace PumpkinMoon.Networking.Transports
 
                     Debug.LogInfo($"Accepted connection from {handler.RemoteEndPoint}");
 
-                    uint clientId = (uint)handlers.Count;
+                    int clientId = handlers.Count;
                     while (handlers.ContainsKey(clientId))
                     {
                         ++clientId;

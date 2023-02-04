@@ -91,6 +91,16 @@ namespace PumpkinMoon.Core.Unsafe
             }
         }
 
+        public static TResult Cast<TSource, TResult>(TSource[] value)
+            where TSource : unmanaged
+            where TResult : unmanaged
+        {
+            fixed (void* ptr = value)
+            {
+                return *(TResult*)ptr;
+            }
+        }
+
         public static void Cast<T>(string value, ref T result) where T : unmanaged
         {
             int length = sizeof(T);
@@ -102,6 +112,13 @@ namespace PumpkinMoon.Core.Unsafe
                     Encoding.UTF8.GetBytes(strPtr, value.Length, (byte*)resultPtr, length);
                 }
             }
+        }
+
+        public static T Cast<T>(string value) where T : unmanaged
+        {
+            T result = default;
+            Cast(value, ref result);
+            return result;
         }
 
         public static string Cast<T>(in T value) where T : unmanaged
@@ -147,6 +164,11 @@ namespace PumpkinMoon.Core.Unsafe
         public static int SizeOf<T>(in T value) where T : unmanaged
         {
             return sizeof(T);
+        }
+
+        public static int SizeOf(object value)
+        {
+            return Marshal.SizeOf(value);
         }
     }
 }

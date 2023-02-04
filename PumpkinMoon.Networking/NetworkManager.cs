@@ -15,7 +15,7 @@ namespace PumpkinMoon.Networking
     {
         private const string PingMessage = "PumpkinMoon_Ping";
 
-        public delegate void ClientDelegate(uint clientId);
+        public delegate void ClientDelegate(int clientId);
 
         public static NetworkManager Instance { get; private set; }
 
@@ -24,7 +24,7 @@ namespace PumpkinMoon.Networking
 
         private readonly INetworkTransport transport;
 
-        private readonly List<uint> connectedClients;
+        private readonly List<int> connectedClients;
 
         public event ClientDelegate ClientConnected;
         public event ClientDelegate ClientDisconnected;
@@ -34,10 +34,10 @@ namespace PumpkinMoon.Networking
 
         public bool IsHost => IsServer && IsClient;
 
-        public IReadOnlyList<uint> ConnectedClients => connectedClients;
+        public IReadOnlyList<int> ConnectedClients => connectedClients;
 
-        public uint LocalClientId { get; private set; }
-        public uint ServerClientId => 0;
+        public int LocalClientId { get; private set; }
+        public int ServerClientId => 0;
 
         private readonly AsyncMessage pingMessage;
 
@@ -57,7 +57,7 @@ namespace PumpkinMoon.Networking
 
             TickSystem.Tick += OnTick;
 
-            connectedClients = new List<uint>();
+            connectedClients = new List<int>();
             MessagingSystem = new MessagingSystem(transport);
 
             transport.ClientConnected += OnClientConnected;
@@ -131,7 +131,7 @@ namespace PumpkinMoon.Networking
             {
                 for (int i = 0; i < ConnectedClients.Count; ++i)
                 {
-                    uint connectedClient = ConnectedClients[i];
+                    int connectedClient = ConnectedClients[i];
                     DisconnectMessage disconnectMessage = new DisconnectMessage(connectedClient);
                     MessagingSystem.SendMessage(disconnectMessage, connectedClient);
                     transport.DisconnectRemoteClient(connectedClient);
@@ -154,7 +154,7 @@ namespace PumpkinMoon.Networking
         }
 
 
-        public async Task<int> Ping(uint clientId)
+        public async Task<int> Ping(int clientId)
         {
             if (clientId == LocalClientId || !connectedClients.Contains(clientId) && clientId != ServerClientId)
             {
@@ -168,7 +168,7 @@ namespace PumpkinMoon.Networking
             return (receiveTime - sendTime).Milliseconds;
         }
 
-        private void OnClientConnected(uint clientId)
+        private void OnClientConnected(int clientId)
         {
             if (connectedClients.Contains(clientId))
             {
@@ -184,7 +184,7 @@ namespace PumpkinMoon.Networking
 
                 for (int i = 0; i < connectedClients.Count; ++i)
                 {
-                    uint connectedClient = connectedClients[i];
+                    int connectedClient = connectedClients[i];
 
                     if (connectedClient == clientId)
                     {
@@ -205,7 +205,7 @@ namespace PumpkinMoon.Networking
             ClientConnected?.Invoke(clientId);
         }
 
-        private void OnClientDisconnected(uint clientId)
+        private void OnClientDisconnected(int clientId)
         {
             if (connectedClients.Remove(clientId))
             {
@@ -220,7 +220,7 @@ namespace PumpkinMoon.Networking
             }
         }
 
-        private void OnConnectMessageReceived(uint sender, ConnectMessage connectMessage)
+        private void OnConnectMessageReceived(int sender, ConnectMessage connectMessage)
         {
             if (!IsServer && LocalClientId == 0)
             {
@@ -230,7 +230,7 @@ namespace PumpkinMoon.Networking
             OnClientConnected(connectMessage.ReceivedClientId);
         }
 
-        private void OnDisconnectMessageReceived(uint sender, DisconnectMessage disconnectMessage)
+        private void OnDisconnectMessageReceived(int sender, DisconnectMessage disconnectMessage)
         {
             if (LocalClientId == disconnectMessage.ReceivedClientId)
             {

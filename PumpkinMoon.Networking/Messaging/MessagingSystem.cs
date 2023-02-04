@@ -13,9 +13,9 @@ namespace PumpkinMoon.Networking.Messaging
     {
         private static readonly byte[] SendBuffer = new byte[ushort.MaxValue];
 
-        public delegate void MessageDelegate(uint sender, BufferReader payload);
+        public delegate void MessageDelegate(int sender, BufferReader payload);
 
-        internal delegate void InternalMessageDelegate<in T>(uint sender, T message) where T : IMessage;
+        internal delegate void InternalMessageDelegate<in T>(int sender, T message) where T : IMessage;
 
         internal event InternalMessageDelegate<ConnectMessage> ConnectMessageReceived;
         internal event InternalMessageDelegate<DisconnectMessage> DisconnectMessageReceived;
@@ -51,7 +51,7 @@ namespace PumpkinMoon.Networking.Messaging
             }
         }
 
-        private ArraySegment<byte> CreateBuffer<T>(T message, uint targetClientId, uint localClientId)
+        private ArraySegment<byte> CreateBuffer<T>(T message, int targetClientId, int localClientId)
             where T : IMessage, new()
         {
             MessageType messageType = message.MessageType;
@@ -66,9 +66,9 @@ namespace PumpkinMoon.Networking.Messaging
             return new ArraySegment<byte>(SendBuffer, 0, length);
         }
 
-        internal void SendMessage<T>(in T message, uint targetClientId) where T : IMessage, new()
+        internal void SendMessage<T>(in T message, int targetClientId) where T : IMessage, new()
         {
-            uint localClientId = NetworkManager.Instance.LocalClientId;
+            int localClientId = NetworkManager.Instance.LocalClientId;
 
             if (localClientId == targetClientId)
             {
@@ -84,23 +84,23 @@ namespace PumpkinMoon.Networking.Messaging
             }
         }
 
-        internal void SendMessage<T>(in T message, IReadOnlyList<uint> targetClientIds) where T : IMessage, new()
+        internal void SendMessage<T>(in T message, IReadOnlyList<int> targetClientIds) where T : IMessage, new()
         {
             for (int i = 0; i < targetClientIds.Count; ++i)
             {
-                uint clientId = targetClientIds[i];
+                int clientId = targetClientIds[i];
                 SendMessage(message, clientId);
             }
         }
 
-        public void SendMessage(string messageName, BufferWriter payload, uint targetClientId)
+        public void SendMessage(string messageName, BufferWriter payload, int targetClientId)
         {
             int length = payload.ToArray(SendBuffer);
             NamedMessage message = new NamedMessage(messageName, new ArraySegment<byte>(SendBuffer, 0, length));
             SendMessage(message, targetClientId);
         }
 
-        public void SendMessage(string messageName, BufferWriter payload, IReadOnlyList<uint> targetClientIds)
+        public void SendMessage(string messageName, BufferWriter payload, IReadOnlyList<int> targetClientIds)
         {
             int length = payload.ToArray(SendBuffer);
             NamedMessage message = new NamedMessage(messageName, new ArraySegment<byte>(SendBuffer, 0, length));
@@ -114,7 +114,7 @@ namespace PumpkinMoon.Networking.Messaging
             while (reader.Position < reader.Length)
             {
                 reader.ReadBufferSerializable(out NetworkMessageHeader header);
-                uint target = header.TargetClientId;
+                int target = header.TargetClientId;
 
                 NetworkManager networkManager = NetworkManager.Instance;
 
@@ -132,7 +132,7 @@ namespace PumpkinMoon.Networking.Messaging
                     }
                 }
 
-                uint sender = header.SenderClientId;
+                int sender = header.SenderClientId;
                 MessageType messageType = header.MessageType;
 
                 switch (messageType)

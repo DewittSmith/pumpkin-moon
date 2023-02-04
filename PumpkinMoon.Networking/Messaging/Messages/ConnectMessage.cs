@@ -6,11 +6,11 @@ namespace PumpkinMoon.Networking.Messaging.Messages
     {
         public MessageType MessageType => MessageType.Connect;
 
-        private uint receivedClientId;
+        private int receivedClientId;
 
-        public uint ReceivedClientId => receivedClientId;
+        public int ReceivedClientId => receivedClientId;
 
-        public ConnectMessage(uint receivedClientId)
+        public ConnectMessage(int receivedClientId)
         {
             this.receivedClientId = receivedClientId;
         }

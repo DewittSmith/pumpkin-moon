@@ -71,21 +71,21 @@ namespace PumpkinMoon.Networking
             NetworkManager.Instance.MessagingSystem.SubscribeToMessage(messageName, OnMessageReceived);
         }
 
-        public Handler Call(uint targetClientId, in BufferWriter writer)
+        public Handler Call(int targetClientId, in BufferWriter writer)
         {
             isPendingResponse = true;
             NetworkManager.Instance.MessagingSystem.SendMessage(messageName, writer, targetClientId);
             return new Handler(this);
         }
 
-        public Handler Call(uint targetClientId)
+        public Handler Call(int targetClientId)
         {
             isPendingResponse = true;
             NetworkManager.Instance.MessagingSystem.SendMessage(messageName, default, targetClientId);
             return new Handler(this);
         }
 
-        public Handler Call(uint targetClientId, params object[] parameters)
+        public Handler Call(int targetClientId, params object[] parameters)
         {
             using BufferWriter writer = new BufferWriter();
 
@@ -99,7 +99,7 @@ namespace PumpkinMoon.Networking
             return new Handler(this);
         }
 
-        private void OnMessageReceived(uint sender, BufferReader payload)
+        private void OnMessageReceived(int sender, BufferReader payload)
         {
             if (isPendingResponse)
             {

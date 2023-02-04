@@ -6,7 +6,7 @@ namespace PumpkinMoon.Networking.Transports
     {
         delegate void NetworkMessageDelegate(ArraySegment<byte> payload);
 
-        delegate void NetworkConnectionDelegate(uint clientId);
+        delegate void NetworkConnectionDelegate(int clientId);
 
         event NetworkMessageDelegate MessageReceived;
         event NetworkConnectionDelegate ClientConnected;
@@ -17,8 +17,8 @@ namespace PumpkinMoon.Networking.Transports
         void Shutdown();
 
         bool PollEvent();
-        bool Send(uint clientId, ArraySegment<byte> payload);
+        bool Send(int clientId, ArraySegment<byte> payload);
 
-        void DisconnectRemoteClient(uint clientId);
+        void DisconnectRemoteClient(int clientId);
     }
 }

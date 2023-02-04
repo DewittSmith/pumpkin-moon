@@ -6,11 +6,11 @@ namespace PumpkinMoon.Networking.Messaging.Messages
     {
         public MessageType MessageType => MessageType.Disconnect;
 
-        private uint receivedClientId;
+        private int receivedClientId;
 
-        public uint ReceivedClientId => receivedClientId;
+        public int ReceivedClientId => receivedClientId;
 
-        public DisconnectMessage(uint receivedClientId)
+        public DisconnectMessage(int receivedClientId)
         {
             this.receivedClientId = receivedClientId;
         }
