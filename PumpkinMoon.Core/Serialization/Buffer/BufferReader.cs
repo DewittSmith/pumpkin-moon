@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Runtime.InteropServices;
 using PumpkinMoon.Core.Unsafe;
 
 namespace PumpkinMoon.Core.Serialization.Buffer
@@ -46,23 +45,16 @@ namespace PumpkinMoon.Core.Serialization.Buffer
             value.BufferSerialize(ref this);
         }
 
-        public unsafe void ReadObject(Type type, out object value)
+        public void ReadObject(Type type, out object value)
         {
-            value = Activator.CreateInstance(type);
-
-            if (typeof(IBufferSerializable).IsAssignableFrom(type))
-            {
-                ((IBufferSerializable)value).BufferSerialize(ref this);
-            }
-            else
-            {
-                var ptr = UnsafeUtils.Unbox(value, out int size, out GCHandle handle);
-                ReadUnmanaged((byte*)ptr, size);
-                handle.Free();
-            }
+            ManagedObjectSerializer.Read(ref this, type, out value);
         }
 
-        // ReSharper disable once RedundantAssignment
+        public void ReadObject<T>(out T value)
+        {
+            ManagedObjectSerializer.Read(ref this, out value);
+        }
+
         public void SerializeUnmanaged<T>(ref T value) where T : unmanaged
         {
             ReadUnmanaged(out value);
@@ -73,16 +65,19 @@ namespace PumpkinMoon.Core.Serialization.Buffer
             ReadUnmanaged(value, length);
         }
 
-        // ReSharper disable once RedundantAssignment
         public void SerializeBufferSerializable<T>(ref T value) where T : IBufferSerializable, new()
         {
             ReadBufferSerializable(out value);
         }
 
-        // ReSharper disable once RedundantAssignment
         public void SerializeObject(Type type, ref object value)
         {
             ReadObject(type, out value);
+        }
+
+        public void SerializeObject<T>(ref T value)
+        {
+            ReadObject(out value);
         }
 
         public void Dispose()

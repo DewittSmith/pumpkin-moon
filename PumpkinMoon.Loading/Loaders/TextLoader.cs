@@ -5,10 +5,10 @@ namespace PumpkinMoon.Loading.Loaders
 {
     public class TextLoader : ILoader
     {
-        public Type Type => typeof(string);
-
-        public Lazy LazyLoad(string namespacedId, Stream stream)
+        public Lazy LazyLoad(Stream stream, out Type type)
         {
+            type = typeof(string);
+
             return new Lazy(() =>
             {
                 using TextReader textReader = new StreamReader(stream);

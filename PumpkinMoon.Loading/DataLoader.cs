@@ -101,10 +101,11 @@ namespace PumpkinMoon.Loading
                 return;
             }
 
-            string namespacedId = namespacedIdProvider.GetNamespacedId(fileEntry.Path, fileEntry.Root, loader.Type);
-            lazies[namespacedId] = loader.LazyLoad(namespacedId, stream);
+            Lazy lazy = loader.LazyLoad(stream, out Type type);
+            string namespacedId = namespacedIdProvider.GetNamespacedId(fileEntry.Path, fileEntry.Root, type);
+            lazies[namespacedId] = lazy;
 
-            LazyCreated?.Invoke(fileEntry.Path, namespacedId, loader.Type);
+            LazyCreated?.Invoke(fileEntry.Path, namespacedId, type);
         }
     }
 }

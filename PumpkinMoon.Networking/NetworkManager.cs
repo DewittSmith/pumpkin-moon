@@ -197,7 +197,7 @@ namespace PumpkinMoon.Networking
 
                 foreach (NetworkObject networkObject in NetworkObject.NetworkObjectsDictionary.Values)
                 {
-                    SyncNetworkVariables(networkObject, true);
+                    SyncRemoteVariable(networkObject, clientId);
                 }
             }
 
@@ -269,7 +269,7 @@ namespace PumpkinMoon.Networking
             }
         }
 
-        private void SyncNetworkVariables(NetworkObject networkObject, bool force = false)
+        private void SyncNetworkVariables(NetworkObject networkObject)
         {
             for (int i = 0; i < networkObject.NetworkVariables.Count; ++i)
             {
@@ -277,7 +277,7 @@ namespace PumpkinMoon.Networking
 
                 NetworkVariableBase variable = networkObject.NetworkVariables[i];
 
-                if (!force && !variable.IsDirty)
+                if (!variable.IsDirty)
                 {
                     continue;
                 }
@@ -295,6 +295,27 @@ namespace PumpkinMoon.Networking
                 }
 
                 MessagingSystem.SendMessage(variableMessage, ConnectedClients);
+
+                writer.Dispose();
+            }
+        }
+
+        private void SyncRemoteVariable(NetworkObject networkObject, int clientId)
+        {
+            for (int i = 0; i < networkObject.NetworkVariables.Count; ++i)
+            {
+                BufferWriter writer = new BufferWriter();
+
+                NetworkVariableBase variable = networkObject.NetworkVariables[i];
+
+                variable.WriteAll(ref writer);
+                int length = writer.ToArray(SendBuffer);
+
+                VariableReference variableReference = new VariableReference(networkObject, variable);
+                VariableMessage variableMessage = new VariableMessage(variableReference,
+                    new ArraySegment<byte>(SendBuffer, 0, length));
+
+                MessagingSystem.SendMessage(variableMessage, clientId);
 
                 writer.Dispose();
             }

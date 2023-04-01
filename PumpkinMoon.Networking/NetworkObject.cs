@@ -14,7 +14,7 @@ namespace PumpkinMoon.Networking
         private readonly List<NetworkVariableBase> networkVariables = new List<NetworkVariableBase>();
         private readonly List<Delegate> rpcDelegates = new List<Delegate>();
 
-        private readonly NetworkVariableUnmanaged<int> ownerClientId = new NetworkVariableUnmanaged<int>();
+        private readonly NetworkVariable<int> ownerClientId = new NetworkVariable<int>();
 
         public int OwnerClientId => ownerClientId.Value;
         public bool IsOwner => ownerClientId.Value == NetworkManager.Instance.LocalClientId;
@@ -22,7 +22,7 @@ namespace PumpkinMoon.Networking
         internal IReadOnlyList<NetworkVariableBase> NetworkVariables => networkVariables;
         internal IReadOnlyList<Delegate> RpcDelegates => rpcDelegates;
 
-        public event NetworkVariableUnmanaged<int>.ValueChangedDelegate OwnerClientIdChanged
+        public event NetworkVariable<int>.ValueChangedDelegate OwnerClientIdChanged
         {
             add => ownerClientId.ValueChanged += value;
             remove => ownerClientId.ValueChanged -= value;

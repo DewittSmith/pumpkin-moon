@@ -2,10 +2,14 @@
 
 namespace PumpkinMoon.Networking.Variables
 {
-    public class NetworkVariable<T> : NetworkVariableBase where T : new()
+    public class NetworkVariable<T> : NetworkVariableBase<NetworkVariable<T>.Delta> where T : new()
     {
-        public delegate void ValueChangedDelegate(T value);
+        public struct Delta
+        {
+            public T Value;
+        }
 
+        private bool isDirty;
         private T internalValue;
 
         public T Value
@@ -19,26 +23,37 @@ namespace PumpkinMoon.Networking.Variables
                 }
 
                 internalValue = value;
-                ValueChanged?.Invoke(internalValue);
 
-                IsDirty = true;
+                RaiseValueChangedEvent(new Delta
+                {
+                    Value = internalValue
+                });
+
+                isDirty = true;
             }
         }
 
-        public event ValueChangedDelegate ValueChanged;
+        public override bool IsDirty => isDirty;
 
         public override void WriteDelta(ref BufferWriter writer)
         {
-            IsDirty = false;
-            writer.WriteObject(typeof(T), internalValue);
+            isDirty = false;
+            writer.WriteObject(internalValue);
+        }
+
+        public override void WriteAll(ref BufferWriter writer)
+        {
+            WriteDelta(ref writer);
         }
 
         public override void ReadDelta(ref BufferReader reader)
         {
-            reader.ReadObject(typeof(T), out object newValue);
+            reader.ReadObject(out internalValue);
 
-            internalValue = (T)newValue;
-            ValueChanged?.Invoke(internalValue);
+            RaiseValueChangedEvent(new Delta
+            {
+                Value = internalValue
+            });
         }
     }
 }

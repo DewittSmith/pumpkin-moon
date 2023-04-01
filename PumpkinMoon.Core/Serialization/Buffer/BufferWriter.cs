@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Runtime.InteropServices;
 using PumpkinMoon.Core.Unsafe;
 
 namespace PumpkinMoon.Core.Serialization.Buffer
@@ -36,18 +35,14 @@ namespace PumpkinMoon.Core.Serialization.Buffer
             value.BufferSerialize(ref this);
         }
 
-        public unsafe void WriteObject(Type type, object value)
+        public void WriteObject(Type type, in object value)
         {
-            if (typeof(IBufferSerializable).IsAssignableFrom(type))
-            {
-                WriteBufferSerializable((IBufferSerializable)value);
-            }
-            else
-            {
-                byte* objectPtr = (byte*)UnsafeUtils.Unbox(value, out int size, out GCHandle handle);
-                WriteUnmanaged(objectPtr, size);
-                handle.Free();
-            }
+            ManagedObjectSerializer.Write(ref this, type, value);
+        }
+
+        public void WriteObject<T>(in T value)
+        {
+            ManagedObjectSerializer.Write(ref this, value);
         }
 
         public void SerializeUnmanaged<T>(ref T value) where T : unmanaged
@@ -68,6 +63,11 @@ namespace PumpkinMoon.Core.Serialization.Buffer
         public void SerializeObject(Type type, ref object value)
         {
             WriteObject(type, value);
+        }
+
+        public void SerializeObject<T>(ref T value)
+        {
+            WriteObject(value);
         }
 
         public void Dispose()

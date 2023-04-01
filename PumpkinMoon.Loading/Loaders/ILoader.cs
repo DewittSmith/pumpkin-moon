@@ -5,7 +5,6 @@ namespace PumpkinMoon.Loading.Loaders
 {
     public interface ILoader
     {
-        Type Type { get; }
-        Lazy LazyLoad(string namespacedId, Stream stream);
+        Lazy LazyLoad(Stream stream, out Type type);
     }
 }

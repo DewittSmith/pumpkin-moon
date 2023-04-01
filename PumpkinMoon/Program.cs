@@ -41,7 +41,7 @@ namespace PumpkinMoon
             networkObject.AddRpc(test.CallServer);
             networkObject.AddRpc(test.CallSync);
 
-            var netVar = new NetworkVariableUnmanaged<int>();
+            var netVar = new NetworkVariable<int>();
             networkObject.AddVariable(netVar);
 
             netVar.ValueChanged += value => Console.WriteLine($"{nameof(netVar)} changed to {value}");
