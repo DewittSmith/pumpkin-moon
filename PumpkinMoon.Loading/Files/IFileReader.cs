@@ -1,9 +1,8 @@
 ﻿using System.IO;
 
-namespace PumpkinMoon.Loading.Files
+namespace PumpkinMoon.Loading.Files;
+
+public interface IFileReader
 {
-    public interface IFileReader
-    {
-        Stream ReadFile(string path);
-    }
+    Stream ReadFile(string path);
 }

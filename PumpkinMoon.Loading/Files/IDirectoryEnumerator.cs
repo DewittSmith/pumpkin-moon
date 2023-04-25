@@ -1,10 +1,9 @@
 ﻿using System.Collections.Generic;
 
-namespace PumpkinMoon.Loading.Files
+namespace PumpkinMoon.Loading.Files;
+
+public interface IDirectoryEnumerator
 {
-    public interface IDirectoryEnumerator
-    {
-        IEnumerable<string> EnumerateFiles(string path);
-        IEnumerable<string> EnumerateDirectories(string path);
-    }
+    IEnumerable<string> EnumerateFiles(string path);
+    IEnumerable<string> EnumerateDirectories(string path);
 }

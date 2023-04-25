@@ -1,10 +1,9 @@
 ﻿using System;
 using System.IO;
 
-namespace PumpkinMoon.Loading.Loaders
+namespace PumpkinMoon.Loading.Loaders;
+
+public interface ILoader
 {
-    public interface ILoader
-    {
-        Lazy LazyLoad(Stream stream, out Type type);
-    }
+    Lazy LazyLoad(Stream stream, out Type type);
 }

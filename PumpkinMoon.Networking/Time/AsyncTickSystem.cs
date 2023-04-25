@@ -1,38 +1,37 @@
 ﻿using System;
 using System.Threading.Tasks;
 
-namespace PumpkinMoon.Networking.Time
+namespace PumpkinMoon.Networking.Time;
+
+public class AsyncTickSystem : ITickSystem, IDisposable
 {
-    public class AsyncTickSystem : ITickSystem, IDisposable
+    public event ITickSystem.TickDelegate Tick;
+    public int Framerate { get; }
+
+    private readonly TimeSpan delaySpan;
+    private bool isRunning;
+
+    public AsyncTickSystem(int framerate)
     {
-        public event ITickSystem.TickDelegate Tick;
-        public int Framerate { get; }
+        Framerate = framerate;
 
-        private readonly TimeSpan delaySpan;
-        private bool isRunning;
+        delaySpan = TimeSpan.FromSeconds(1f / framerate);
+        isRunning = true;
 
-        public AsyncTickSystem(int framerate)
+        Run();
+    }
+
+    internal async void Run()
+    {
+        while (isRunning)
         {
-            Framerate = framerate;
-
-            delaySpan = TimeSpan.FromSeconds(1f / framerate);
-            isRunning = true;
-
-            Run();
+            Tick?.Invoke();
+            await Task.Delay(delaySpan);
         }
+    }
 
-        internal async void Run()
-        {
-            while (isRunning)
-            {
-                Tick?.Invoke();
-                await Task.Delay(delaySpan);
-            }
-        }
-
-        public void Dispose()
-        {
-            isRunning = false;
-        }
+    public void Dispose()
+    {
+        isRunning = false;
     }
 }

@@ -2,134 +2,133 @@
 using System.Collections.Generic;
 using PumpkinMoon.Networking.Variables;
 
-namespace PumpkinMoon.Networking
+namespace PumpkinMoon.Networking;
+
+public class NetworkObject : IDisposable
 {
-    public class NetworkObject : IDisposable
+    internal static readonly Dictionary<int, NetworkObject> NetworkObjectsDictionary =
+        new Dictionary<int, NetworkObject>();
+
+    public readonly int NetworkId;
+
+    private readonly List<NetworkVariableBase> networkVariables = new List<NetworkVariableBase>();
+    private readonly List<Delegate> rpcDelegates = new List<Delegate>();
+
+    private readonly NetworkVariable<int> ownerClientId = new NetworkVariable<int>();
+
+    public int OwnerClientId => ownerClientId.Value;
+    public bool IsOwner => ownerClientId.Value == NetworkManager.Instance.LocalClientId;
+
+    internal IReadOnlyList<NetworkVariableBase> NetworkVariables => networkVariables;
+    internal IReadOnlyList<Delegate> RpcDelegates => rpcDelegates;
+
+    public event NetworkVariable<int>.ValueChangedDelegate OwnerClientIdChanged
     {
-        internal static readonly Dictionary<int, NetworkObject> NetworkObjectsDictionary =
-            new Dictionary<int, NetworkObject>();
+        add => ownerClientId.ValueChanged += value;
+        remove => ownerClientId.ValueChanged -= value;
+    }
 
-        public readonly int NetworkId;
-
-        private readonly List<NetworkVariableBase> networkVariables = new List<NetworkVariableBase>();
-        private readonly List<Delegate> rpcDelegates = new List<Delegate>();
-
-        private readonly NetworkVariable<int> ownerClientId = new NetworkVariable<int>();
-
-        public int OwnerClientId => ownerClientId.Value;
-        public bool IsOwner => ownerClientId.Value == NetworkManager.Instance.LocalClientId;
-
-        internal IReadOnlyList<NetworkVariableBase> NetworkVariables => networkVariables;
-        internal IReadOnlyList<Delegate> RpcDelegates => rpcDelegates;
-
-        public event NetworkVariable<int>.ValueChangedDelegate OwnerClientIdChanged
+    internal int GetNetworkVariableIndex(NetworkVariableBase networkVariable)
+    {
+        for (int i = 0; i < networkVariables.Count; ++i)
         {
-            add => ownerClientId.ValueChanged += value;
-            remove => ownerClientId.ValueChanged -= value;
+            if (networkVariables[i] == networkVariable)
+            {
+                return i;
+            }
         }
 
-        internal int GetNetworkVariableIndex(NetworkVariableBase networkVariable)
+        return -1;
+    }
+
+    internal int GetRpcIndex(Delegate rpcDelegate)
+    {
+        for (int i = 0; i < rpcDelegates.Count; ++i)
         {
-            for (int i = 0; i < networkVariables.Count; ++i)
+            if (rpcDelegates[i] == rpcDelegate)
             {
-                if (networkVariables[i] == networkVariable)
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    internal bool IsDirty
+    {
+        get
+        {
+            for (int i = 0; i < NetworkVariables.Count; ++i)
+            {
+                if (NetworkVariables[i].IsDirty)
                 {
-                    return i;
+                    return true;
                 }
             }
 
-            return -1;
+            return false;
         }
+    }
 
-        internal int GetRpcIndex(Delegate rpcDelegate)
+    public NetworkObject(int id)
+    {
+        NetworkId = id;
+        NetworkObjectsDictionary[NetworkId] = this;
+
+        networkVariables.Add(ownerClientId);
+    }
+
+    public bool AddVariable(NetworkVariableBase networkVariable)
+    {
+        if (networkVariables.Contains(networkVariable))
         {
-            for (int i = 0; i < rpcDelegates.Count; ++i)
-            {
-                if (rpcDelegates[i] == rpcDelegate)
-                {
-                    return i;
-                }
-            }
-
-            return -1;
+            return false;
         }
 
-        internal bool IsDirty
+        networkVariables.Add(networkVariable);
+        return true;
+    }
+
+    public bool RemoveVariable(NetworkVariableBase networkVariable)
+    {
+        if (!networkVariables.Contains(networkVariable))
         {
-            get
-            {
-                for (int i = 0; i < NetworkVariables.Count; ++i)
-                {
-                    if (NetworkVariables[i].IsDirty)
-                    {
-                        return true;
-                    }
-                }
-
-                return false;
-            }
+            return false;
         }
 
-        public NetworkObject(int id)
+        networkVariables.Remove(networkVariable);
+        return true;
+    }
+
+    public bool AddRpc(Delegate rpcDelegate)
+    {
+        if (rpcDelegates.Contains(rpcDelegate))
         {
-            NetworkId = id;
-            NetworkObjectsDictionary[NetworkId] = this;
-
-            networkVariables.Add(ownerClientId);
+            return false;
         }
 
-        public bool AddVariable(NetworkVariableBase networkVariable)
+        rpcDelegates.Add(rpcDelegate);
+        return true;
+    }
+
+    public bool RemoveRpc(Delegate rpcDelegate)
+    {
+        if (!rpcDelegates.Contains(rpcDelegate))
         {
-            if (networkVariables.Contains(networkVariable))
-            {
-                return false;
-            }
-
-            networkVariables.Add(networkVariable);
-            return true;
+            return false;
         }
 
-        public bool RemoveVariable(NetworkVariableBase networkVariable)
-        {
-            if (!networkVariables.Contains(networkVariable))
-            {
-                return false;
-            }
+        rpcDelegates.Remove(rpcDelegate);
+        return true;
+    }
 
-            networkVariables.Remove(networkVariable);
-            return true;
-        }
+    public void ChangeOwnership(int ownerId)
+    {
+        ownerClientId.Value = ownerId;
+    }
 
-        public bool AddRpc(Delegate rpcDelegate)
-        {
-            if (rpcDelegates.Contains(rpcDelegate))
-            {
-                return false;
-            }
-
-            rpcDelegates.Add(rpcDelegate);
-            return true;
-        }
-
-        public bool RemoveRpc(Delegate rpcDelegate)
-        {
-            if (!rpcDelegates.Contains(rpcDelegate))
-            {
-                return false;
-            }
-
-            rpcDelegates.Remove(rpcDelegate);
-            return true;
-        }
-
-        public void ChangeOwnership(int ownerId)
-        {
-            ownerClientId.Value = ownerId;
-        }
-
-        public void Dispose()
-        {
-            NetworkObjectsDictionary.Remove(NetworkId);
-        }
+    public void Dispose()
+    {
+        NetworkObjectsDictionary.Remove(NetworkId);
     }
 }

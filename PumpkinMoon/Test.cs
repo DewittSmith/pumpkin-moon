@@ -1,25 +1,24 @@
 ﻿using System;
 using PumpkinMoon.Networking;
 
-namespace PumpkinMoon
+namespace PumpkinMoon;
+
+public class Test
 {
-    public class Test
+    public NetworkObject Owner { get; set; }
+
+    public void CallServer()
     {
-        public NetworkObject Owner { get; set; }
+        Console.WriteLine("I was called on server!");
+    }
 
-        public void CallServer()
-        {
-            Console.WriteLine("I was called on server!");
-        }
+    public void CallClient()
+    {
+        Console.WriteLine("I was called on client!");
+    }
 
-        public void CallClient()
-        {
-            Console.WriteLine("I was called on client!");
-        }
-
-        public void CallSync(int arg)
-        {
-            Console.WriteLine("I was called synchronously! " + arg);
-        }
+    public void CallSync(int arg)
+    {
+        Console.WriteLine("I was called synchronously! " + arg);
     }
 }

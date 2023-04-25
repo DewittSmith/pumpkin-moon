@@ -9,337 +9,336 @@ using PumpkinMoon.Networking.Time;
 using PumpkinMoon.Networking.Transports;
 using PumpkinMoon.Networking.Variables;
 
-namespace PumpkinMoon.Networking
+namespace PumpkinMoon.Networking;
+
+public class NetworkManager : IDisposable
 {
-    public class NetworkManager : IDisposable
+    private const string PingMessage = "PumpkinMoon_Ping";
+
+    public delegate void ClientDelegate(int clientId);
+
+    public static NetworkManager Instance { get; private set; }
+
+    public readonly MessagingSystem MessagingSystem;
+    public readonly ITickSystem TickSystem;
+
+    private readonly INetworkTransport transport;
+
+    private readonly List<int> connectedClients;
+
+    public event ClientDelegate ClientConnected;
+    public event ClientDelegate ClientDisconnected;
+
+    public bool IsServer { get; private set; }
+    public bool IsClient { get; private set; }
+
+    public bool IsHost => IsServer && IsClient;
+
+    public IReadOnlyList<int> ConnectedClients => connectedClients;
+
+    public int LocalClientId { get; private set; }
+    public int ServerClientId => 0;
+
+    private readonly AsyncMessage pingMessage;
+
+    public NetworkManager(INetworkTransport transport, ITickSystem tickSystem)
     {
-        private const string PingMessage = "PumpkinMoon_Ping";
-
-        public delegate void ClientDelegate(int clientId);
-
-        public static NetworkManager Instance { get; private set; }
-
-        public readonly MessagingSystem MessagingSystem;
-        public readonly ITickSystem TickSystem;
-
-        private readonly INetworkTransport transport;
-
-        private readonly List<int> connectedClients;
-
-        public event ClientDelegate ClientConnected;
-        public event ClientDelegate ClientDisconnected;
-
-        public bool IsServer { get; private set; }
-        public bool IsClient { get; private set; }
-
-        public bool IsHost => IsServer && IsClient;
-
-        public IReadOnlyList<int> ConnectedClients => connectedClients;
-
-        public int LocalClientId { get; private set; }
-        public int ServerClientId => 0;
-
-        private readonly AsyncMessage pingMessage;
-
-        public NetworkManager(INetworkTransport transport, ITickSystem tickSystem)
+        if (Instance == null)
         {
-            if (Instance == null)
-            {
-                Instance = this;
-            }
-            else
-            {
-                throw new Exception($"There is already an instance of {nameof(NetworkManager)}");
-            }
-
-            this.transport = transport;
-            TickSystem = tickSystem;
-
-            TickSystem.Tick += OnTick;
-
-            connectedClients = new List<int>();
-            MessagingSystem = new MessagingSystem(transport);
-
-            transport.ClientConnected += OnClientConnected;
-            transport.ClientDisconnected += OnClientDisconnected;
-
-            MessagingSystem.ConnectMessageReceived += OnConnectMessageReceived;
-            MessagingSystem.DisconnectMessageReceived += OnDisconnectMessageReceived;
-
-            pingMessage = new AsyncMessage(PingMessage);
+            Instance = this;
+        }
+        else
+        {
+            throw new Exception($"There is already an instance of {nameof(NetworkManager)}");
         }
 
-        public bool StartServer()
+        this.transport = transport;
+        TickSystem = tickSystem;
+
+        TickSystem.Tick += OnTick;
+
+        connectedClients = new List<int>();
+        MessagingSystem = new MessagingSystem(transport);
+
+        transport.ClientConnected += OnClientConnected;
+        transport.ClientDisconnected += OnClientDisconnected;
+
+        MessagingSystem.ConnectMessageReceived += OnConnectMessageReceived;
+        MessagingSystem.DisconnectMessageReceived += OnDisconnectMessageReceived;
+
+        pingMessage = new AsyncMessage(PingMessage);
+    }
+
+    public bool StartServer()
+    {
+        bool status = transport.StartServer();
+
+        if (!status)
         {
-            bool status = transport.StartServer();
-
-            if (!status)
-            {
-                Debug.LogError("Couldn't start server");
-                return false;
-            }
-
-            IsServer = true;
-            Debug.LogInfo("Started server");
-
-            return true;
+            Debug.LogError("Couldn't start server");
+            return false;
         }
 
-        public bool StartClient()
+        IsServer = true;
+        Debug.LogInfo("Started server");
+
+        return true;
+    }
+
+    public bool StartClient()
+    {
+        bool status = transport.StartClient();
+
+        if (!status)
         {
-            bool status = transport.StartClient();
-
-            if (!status)
-            {
-                Debug.LogError("Couldn't start client");
-                return false;
-            }
-
-            IsClient = true;
-            Debug.LogInfo("Started client");
-
-            return true;
+            Debug.LogError("Couldn't start client");
+            return false;
         }
 
-        public bool StartHost()
+        IsClient = true;
+        Debug.LogInfo("Started client");
+
+        return true;
+    }
+
+    public bool StartHost()
+    {
+        bool status = transport.StartServer();
+
+        if (!status)
         {
-            bool status = transport.StartServer();
-
-            if (!status)
-            {
-                Debug.LogError("Couldn't start host");
-                return false;
-            }
-
-            IsServer = IsClient = true;
-            Debug.LogInfo("Started host");
-
-            LocalClientId = ServerClientId;
-            OnClientConnected(ServerClientId);
-
-            return true;
+            Debug.LogError("Couldn't start host");
+            return false;
         }
 
-        public void Shutdown()
+        IsServer = IsClient = true;
+        Debug.LogInfo("Started host");
+
+        LocalClientId = ServerClientId;
+        OnClientConnected(ServerClientId);
+
+        return true;
+    }
+
+    public void Shutdown()
+    {
+        if (!IsClient && !IsServer)
         {
-            if (!IsClient && !IsServer)
+            return;
+        }
+
+        if (IsServer)
+        {
+            for (int i = 0; i < ConnectedClients.Count; ++i)
             {
-                return;
+                int connectedClient = ConnectedClients[i];
+                DisconnectMessage disconnectMessage = new DisconnectMessage(connectedClient);
+                MessagingSystem.SendMessage(disconnectMessage, connectedClient);
+                transport.DisconnectRemoteClient(connectedClient);
+            }
+        }
+
+        if (IsClient)
+        {
+            DisconnectMessage disconnectMessage = new DisconnectMessage(LocalClientId);
+            MessagingSystem.SendMessage(disconnectMessage, ConnectedClients);
+        }
+
+        transport.Shutdown();
+
+        LocalClientId = 0;
+        connectedClients.Clear();
+        IsClient = IsServer = false;
+
+        Debug.LogInfo("Shut down network manager");
+    }
+
+
+    public async Task<int> Ping(int clientId)
+    {
+        if (clientId == LocalClientId || !connectedClients.Contains(clientId) && clientId != ServerClientId)
+        {
+            return -1;
+        }
+
+        DateTime sendTime = DateTime.Now;
+        await pingMessage.Call(clientId);
+        DateTime receiveTime = DateTime.Now;
+
+        return (receiveTime - sendTime).Milliseconds;
+    }
+
+    private void OnClientConnected(int clientId)
+    {
+        if (connectedClients.Contains(clientId))
+        {
+            return;
+        }
+
+        connectedClients.Add(clientId);
+
+        if (IsServer)
+        {
+            ConnectMessage connectMessage = new ConnectMessage(clientId);
+            MessagingSystem.SendMessage(connectMessage, ConnectedClients);
+
+            for (int i = 0; i < connectedClients.Count; ++i)
+            {
+                int connectedClient = connectedClients[i];
+
+                if (connectedClient == clientId)
+                {
+                    continue;
+                }
+
+                connectMessage = new ConnectMessage(connectedClient);
+                MessagingSystem.SendMessage(connectMessage, clientId);
             }
 
+            foreach (NetworkObject networkObject in NetworkObject.NetworkObjectsDictionary.Values)
+            {
+                SyncRemoteVariable(networkObject, clientId);
+            }
+        }
+
+        Debug.LogInfo($"Client {clientId} connected");
+        ClientConnected?.Invoke(clientId);
+    }
+
+    private void OnClientDisconnected(int clientId)
+    {
+        if (connectedClients.Remove(clientId))
+        {
             if (IsServer)
             {
-                for (int i = 0; i < ConnectedClients.Count; ++i)
-                {
-                    int connectedClient = ConnectedClients[i];
-                    DisconnectMessage disconnectMessage = new DisconnectMessage(connectedClient);
-                    MessagingSystem.SendMessage(disconnectMessage, connectedClient);
-                    transport.DisconnectRemoteClient(connectedClient);
-                }
-            }
-
-            if (IsClient)
-            {
-                DisconnectMessage disconnectMessage = new DisconnectMessage(LocalClientId);
+                DisconnectMessage disconnectMessage = new DisconnectMessage(clientId);
                 MessagingSystem.SendMessage(disconnectMessage, ConnectedClients);
             }
 
-            transport.Shutdown();
+            Debug.LogInfo($"Client {clientId} disconnected");
+            ClientDisconnected?.Invoke(clientId);
+        }
+    }
 
-            LocalClientId = 0;
-            connectedClients.Clear();
-            IsClient = IsServer = false;
-
-            Debug.LogInfo("Shut down network manager");
+    private void OnConnectMessageReceived(int sender, ConnectMessage connectMessage)
+    {
+        if (!IsServer && LocalClientId == 0)
+        {
+            LocalClientId = connectMessage.ReceivedClientId;
         }
 
+        OnClientConnected(connectMessage.ReceivedClientId);
+    }
 
-        public async Task<int> Ping(int clientId)
+    private void OnDisconnectMessageReceived(int sender, DisconnectMessage disconnectMessage)
+    {
+        if (LocalClientId == disconnectMessage.ReceivedClientId)
         {
-            if (clientId == LocalClientId || !connectedClients.Contains(clientId) && clientId != ServerClientId)
-            {
-                return -1;
-            }
-
-            DateTime sendTime = DateTime.Now;
-            await pingMessage.Call(clientId);
-            DateTime receiveTime = DateTime.Now;
-
-            return (receiveTime - sendTime).Milliseconds;
+            Shutdown();
         }
 
-        private void OnClientConnected(int clientId)
+        OnClientDisconnected(disconnectMessage.ReceivedClientId);
+    }
+
+    private static readonly byte[] SendBuffer = new byte[ushort.MaxValue];
+
+    private void OnTick()
+    {
+        if (!IsClient && !IsServer)
         {
-            if (connectedClients.Contains(clientId))
-            {
-                return;
-            }
-
-            connectedClients.Add(clientId);
-
-            if (IsServer)
-            {
-                ConnectMessage connectMessage = new ConnectMessage(clientId);
-                MessagingSystem.SendMessage(connectMessage, ConnectedClients);
-
-                for (int i = 0; i < connectedClients.Count; ++i)
-                {
-                    int connectedClient = connectedClients[i];
-
-                    if (connectedClient == clientId)
-                    {
-                        continue;
-                    }
-
-                    connectMessage = new ConnectMessage(connectedClient);
-                    MessagingSystem.SendMessage(connectMessage, clientId);
-                }
-
-                foreach (NetworkObject networkObject in NetworkObject.NetworkObjectsDictionary.Values)
-                {
-                    SyncRemoteVariable(networkObject, clientId);
-                }
-            }
-
-            Debug.LogInfo($"Client {clientId} connected");
-            ClientConnected?.Invoke(clientId);
+            return;
         }
 
-        private void OnClientDisconnected(int clientId)
+        while (transport.PollEvent())
         {
-            if (connectedClients.Remove(clientId))
-            {
-                if (IsServer)
-                {
-                    DisconnectMessage disconnectMessage = new DisconnectMessage(clientId);
-                    MessagingSystem.SendMessage(disconnectMessage, ConnectedClients);
-                }
-
-                Debug.LogInfo($"Client {clientId} disconnected");
-                ClientDisconnected?.Invoke(clientId);
-            }
         }
 
-        private void OnConnectMessageReceived(int sender, ConnectMessage connectMessage)
+        ProcessNetworkObjects();
+    }
+
+    private void ProcessNetworkObjects()
+    {
+        foreach (NetworkObject networkObject in NetworkObject.NetworkObjectsDictionary.Values)
         {
-            if (!IsServer && LocalClientId == 0)
+            if (!networkObject.IsDirty)
             {
-                LocalClientId = connectMessage.ReceivedClientId;
+                continue;
             }
 
-            OnClientConnected(connectMessage.ReceivedClientId);
+            SyncNetworkVariables(networkObject);
         }
+    }
 
-        private void OnDisconnectMessageReceived(int sender, DisconnectMessage disconnectMessage)
+    private void SyncNetworkVariables(NetworkObject networkObject)
+    {
+        for (int i = 0; i < networkObject.NetworkVariables.Count; ++i)
         {
-            if (LocalClientId == disconnectMessage.ReceivedClientId)
+            BufferWriter writer = new BufferWriter();
+
+            NetworkVariableBase variable = networkObject.NetworkVariables[i];
+
+            if (!variable.IsDirty)
             {
-                Shutdown();
+                continue;
             }
 
-            OnClientDisconnected(disconnectMessage.ReceivedClientId);
+            variable.WriteDelta(ref writer);
+            int length = writer.ToArray(SendBuffer);
+
+            VariableReference variableReference = new VariableReference(networkObject, variable);
+            VariableMessage variableMessage = new VariableMessage(variableReference,
+                new ArraySegment<byte>(SendBuffer, 0, length));
+
+            if (!connectedClients.Contains(ServerClientId))
+            {
+                MessagingSystem.SendMessage(variableMessage, ServerClientId);
+            }
+
+            MessagingSystem.SendMessage(variableMessage, ConnectedClients);
+
+            writer.Dispose();
         }
+    }
 
-        private static readonly byte[] SendBuffer = new byte[ushort.MaxValue];
-
-        private void OnTick()
+    private void SyncRemoteVariable(NetworkObject networkObject, int clientId)
+    {
+        for (int i = 0; i < networkObject.NetworkVariables.Count; ++i)
         {
-            if (!IsClient && !IsServer)
-            {
-                return;
-            }
+            BufferWriter writer = new BufferWriter();
 
-            while (transport.PollEvent())
-            {
-            }
+            NetworkVariableBase variable = networkObject.NetworkVariables[i];
 
-            ProcessNetworkObjects();
+            variable.WriteAll(ref writer);
+            int length = writer.ToArray(SendBuffer);
+
+            VariableReference variableReference = new VariableReference(networkObject, variable);
+            VariableMessage variableMessage = new VariableMessage(variableReference,
+                new ArraySegment<byte>(SendBuffer, 0, length));
+
+            MessagingSystem.SendMessage(variableMessage, clientId);
+
+            writer.Dispose();
         }
+    }
 
-        private void ProcessNetworkObjects()
+    public void Dispose()
+    {
+        MessagingSystem.Dispose();
+        pingMessage.Dispose();
+
+        TickSystem.Tick -= OnTick;
+
+        transport.ClientConnected -= OnClientConnected;
+        transport.ClientDisconnected -= OnClientDisconnected;
+
+        MessagingSystem.ConnectMessageReceived -= OnConnectMessageReceived;
+        MessagingSystem.DisconnectMessageReceived -= OnDisconnectMessageReceived;
+
+        transport.Shutdown();
+
+        if (transport is IDisposable disposable)
         {
-            foreach (NetworkObject networkObject in NetworkObject.NetworkObjectsDictionary.Values)
-            {
-                if (!networkObject.IsDirty)
-                {
-                    continue;
-                }
-
-                SyncNetworkVariables(networkObject);
-            }
-        }
-
-        private void SyncNetworkVariables(NetworkObject networkObject)
-        {
-            for (int i = 0; i < networkObject.NetworkVariables.Count; ++i)
-            {
-                BufferWriter writer = new BufferWriter();
-
-                NetworkVariableBase variable = networkObject.NetworkVariables[i];
-
-                if (!variable.IsDirty)
-                {
-                    continue;
-                }
-
-                variable.WriteDelta(ref writer);
-                int length = writer.ToArray(SendBuffer);
-
-                VariableReference variableReference = new VariableReference(networkObject, variable);
-                VariableMessage variableMessage = new VariableMessage(variableReference,
-                    new ArraySegment<byte>(SendBuffer, 0, length));
-
-                if (!connectedClients.Contains(ServerClientId))
-                {
-                    MessagingSystem.SendMessage(variableMessage, ServerClientId);
-                }
-
-                MessagingSystem.SendMessage(variableMessage, ConnectedClients);
-
-                writer.Dispose();
-            }
-        }
-
-        private void SyncRemoteVariable(NetworkObject networkObject, int clientId)
-        {
-            for (int i = 0; i < networkObject.NetworkVariables.Count; ++i)
-            {
-                BufferWriter writer = new BufferWriter();
-
-                NetworkVariableBase variable = networkObject.NetworkVariables[i];
-
-                variable.WriteAll(ref writer);
-                int length = writer.ToArray(SendBuffer);
-
-                VariableReference variableReference = new VariableReference(networkObject, variable);
-                VariableMessage variableMessage = new VariableMessage(variableReference,
-                    new ArraySegment<byte>(SendBuffer, 0, length));
-
-                MessagingSystem.SendMessage(variableMessage, clientId);
-
-                writer.Dispose();
-            }
-        }
-
-        public void Dispose()
-        {
-            MessagingSystem.Dispose();
-            pingMessage.Dispose();
-
-            TickSystem.Tick -= OnTick;
-
-            transport.ClientConnected -= OnClientConnected;
-            transport.ClientDisconnected -= OnClientDisconnected;
-
-            MessagingSystem.ConnectMessageReceived -= OnConnectMessageReceived;
-            MessagingSystem.DisconnectMessageReceived -= OnDisconnectMessageReceived;
-
-            transport.Shutdown();
-
-            if (transport is IDisposable disposable)
-            {
-                disposable.Dispose();
-            }
+            disposable.Dispose();
         }
     }
 }

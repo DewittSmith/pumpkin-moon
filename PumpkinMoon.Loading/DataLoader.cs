@@ -5,107 +5,106 @@ using PumpkinMoon.Loading.Files;
 using PumpkinMoon.Loading.Loaders;
 using PumpkinMoon.Loading.Namespace;
 
-namespace PumpkinMoon.Loading
+namespace PumpkinMoon.Loading;
+
+public class DataLoader
 {
-    public class DataLoader
+    public delegate void LazyCreatedDelegate(string path, string namespacedId, Type type);
+
+    private readonly Dictionary<string, Lazy> lazies = new Dictionary<string, Lazy>();
+    private readonly Dictionary<string, ILoader> loaders = new Dictionary<string, ILoader>();
+
+    private readonly INamespacedIdProvider namespacedIdProvider;
+    private readonly IDirectoryEnumerator directoryEnumerator;
+    private readonly IFileReader fileReader;
+
+    public event LazyCreatedDelegate LazyCreated;
+
+    public DataLoader()
     {
-        public delegate void LazyCreatedDelegate(string path, string namespacedId, Type type);
+        namespacedIdProvider = new DefaultNamespaceIdProvider();
+        directoryEnumerator = new DefaultDirectoryEnumerator();
+        fileReader = new DefaultFileReader();
+    }
 
-        private readonly Dictionary<string, Lazy> lazies = new Dictionary<string, Lazy>();
-        private readonly Dictionary<string, ILoader> loaders = new Dictionary<string, ILoader>();
+    public DataLoader(INamespacedIdProvider namespacedIdProvider = null,
+        IDirectoryEnumerator directoryEnumerator = null,
+        IFileReader fileReader = null)
+    {
+        this.namespacedIdProvider = namespacedIdProvider ?? new DefaultNamespaceIdProvider();
+        this.directoryEnumerator = directoryEnumerator ?? new DefaultDirectoryEnumerator();
+        this.fileReader = fileReader ?? new DefaultFileReader();
+    }
 
-        private readonly INamespacedIdProvider namespacedIdProvider;
-        private readonly IDirectoryEnumerator directoryEnumerator;
-        private readonly IFileReader fileReader;
+    public void RegisterLoader<TLoader>(string extension) where TLoader : ILoader, new()
+    {
+        loaders[extension.ToLower()] = Activator.CreateInstance<TLoader>();
+    }
 
-        public event LazyCreatedDelegate LazyCreated;
-
-        public DataLoader()
+    public T GetData<T>(string namespacedId)
+    {
+        if (lazies.TryGetValue(namespacedId, out Lazy lazy))
         {
-            namespacedIdProvider = new DefaultNamespaceIdProvider();
-            directoryEnumerator = new DefaultDirectoryEnumerator();
-            fileReader = new DefaultFileReader();
+            return lazy.GetValue<T>();
         }
 
-        public DataLoader(INamespacedIdProvider namespacedIdProvider = null,
-            IDirectoryEnumerator directoryEnumerator = null,
-            IFileReader fileReader = null)
-        {
-            this.namespacedIdProvider = namespacedIdProvider ?? new DefaultNamespaceIdProvider();
-            this.directoryEnumerator = directoryEnumerator ?? new DefaultDirectoryEnumerator();
-            this.fileReader = fileReader ?? new DefaultFileReader();
-        }
+        return default;
+    }
 
-        public void RegisterLoader<TLoader>(string extension) where TLoader : ILoader, new()
-        {
-            loaders[extension.ToLower()] = Activator.CreateInstance<TLoader>();
-        }
+    public void LoadEntry(string path)
+    {
+        FileEntry entry = new FileEntry(null, path);
+        LoadEntry(entry);
+    }
 
-        public T GetData<T>(string namespacedId)
-        {
-            if (lazies.TryGetValue(namespacedId, out Lazy lazy))
-            {
-                return lazy.GetValue<T>();
-            }
+    public void LoadDirectory(string path, bool recursive = true)
+    {
+        LoadDirectory(path, path, recursive);
+    }
 
-            return default;
-        }
-
-        public void LoadEntry(string path)
+    private void LoadDirectory(string root, string path, bool recursive)
+    {
+        foreach (string file in directoryEnumerator.EnumerateFiles(path))
         {
-            FileEntry entry = new FileEntry(null, path);
+            FileEntry entry = new FileEntry(root, file);
             LoadEntry(entry);
         }
 
-        public void LoadDirectory(string path, bool recursive = true)
+        if (!recursive)
         {
-            LoadDirectory(path, path, recursive);
+            return;
         }
 
-        private void LoadDirectory(string root, string path, bool recursive)
+        foreach (string directory in directoryEnumerator.EnumerateDirectories(path))
         {
-            foreach (string file in directoryEnumerator.EnumerateFiles(path))
-            {
-                FileEntry entry = new FileEntry(root, file);
-                LoadEntry(entry);
-            }
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalse
+            LoadDirectory(root, directory, recursive);
+        }
+    }
 
-            if (!recursive)
-            {
-                return;
-            }
+    private void LoadEntry(FileEntry fileEntry)
+    {
+        string extension = fileEntry.Extension;
 
-            foreach (string directory in directoryEnumerator.EnumerateDirectories(path))
-            {
-                // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-                LoadDirectory(root, directory, recursive);
-            }
+        if (loaders.TryGetValue(extension, out ILoader loader))
+        {
+            AddLazy(fileEntry, loader);
+        }
+    }
+
+    private void AddLazy(FileEntry fileEntry, ILoader loader)
+    {
+        Stream stream = fileReader.ReadFile(fileEntry.Path);
+
+        if (stream == null)
+        {
+            return;
         }
 
-        private void LoadEntry(FileEntry fileEntry)
-        {
-            string extension = fileEntry.Extension;
+        Lazy lazy = loader.LazyLoad(stream, out Type type);
+        string namespacedId = namespacedIdProvider.GetNamespacedId(fileEntry.Path, fileEntry.Root, type);
+        lazies[namespacedId] = lazy;
 
-            if (loaders.TryGetValue(extension, out ILoader loader))
-            {
-                AddLazy(fileEntry, loader);
-            }
-        }
-
-        private void AddLazy(FileEntry fileEntry, ILoader loader)
-        {
-            Stream stream = fileReader.ReadFile(fileEntry.Path);
-
-            if (stream == null)
-            {
-                return;
-            }
-
-            Lazy lazy = loader.LazyLoad(stream, out Type type);
-            string namespacedId = namespacedIdProvider.GetNamespacedId(fileEntry.Path, fileEntry.Root, type);
-            lazies[namespacedId] = lazy;
-
-            LazyCreated?.Invoke(fileEntry.Path, namespacedId, type);
-        }
+        LazyCreated?.Invoke(fileEntry.Path, namespacedId, type);
     }
 }

@@ -1,12 +1,11 @@
 ﻿using System.IO;
 
-namespace PumpkinMoon.Loading.Files
+namespace PumpkinMoon.Loading.Files;
+
+public class DefaultFileReader : IFileReader
 {
-    public class DefaultFileReader : IFileReader
+    public Stream ReadFile(string path)
     {
-        public Stream ReadFile(string path)
-        {
-            return File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-        }
+        return File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
     }
 }

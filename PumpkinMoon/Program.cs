@@ -10,199 +10,210 @@ using PumpkinMoon.Networking.Time;
 using PumpkinMoon.Networking.Transports;
 using PumpkinMoon.Networking.Variables;
 
-namespace PumpkinMoon
+namespace PumpkinMoon;
+
+internal class Program
 {
-    internal class Program
+    private static void Main(string[] args)
     {
-        private static void Main(string[] args)
+        Debug.SetProvider(new ConsoleDebugProvider("PumpkinMoon"));
+        Debug.LogLevel = Debug.Type.Developer;
+
+        SocketTransport transport = new SocketTransport();
+        AsyncTickSystem tickSystem = new AsyncTickSystem(10);
+
+        transport.Config.Port = 7777;
+        transport.Config.ConnectAddress = "127.0.0.1";
+        transport.Config.ListenAddress = "127.0.0.1";
+
+        NetworkManager networkManager = new NetworkManager(transport, tickSystem);
+
+        networkManager.MessagingSystem.SubscribeToMessage("Chat Message", (sender, payload) =>
         {
-            Debug.SetProvider(new ConsoleDebugProvider("PumpkinMoon"));
-            Debug.LogLevel = Debug.Type.Developer;
+            payload.ReadBufferSerializable(out UnsafeString unsafeString);
+            Console.WriteLine($"[Client {sender}]: {unsafeString}");
+        });
 
-            SocketTransport transport = new SocketTransport();
-            AsyncTickSystem tickSystem = new AsyncTickSystem(10);
+        NetworkObject networkObject = new NetworkObject(0);
+        Test test = new Test();
 
-            transport.Config.Port = 7777;
-            transport.Config.ConnectAddress = "127.0.0.1";
-            transport.Config.ListenAddress = "127.0.0.1";
+        networkObject.AddRpc(test.CallClient);
+        networkObject.AddRpc(test.CallServer);
+        networkObject.AddRpc(test.CallSync);
 
-            NetworkManager networkManager = new NetworkManager(transport, tickSystem);
+        var netVar = new NetworkVariable<int>();
+        var list = new NetworkList<UnsafeString>();
 
-            networkManager.MessagingSystem.SubscribeToMessage("Chat Message", (sender, payload) =>
+        networkObject.AddVariable(netVar);
+        networkObject.AddVariable(list);
+
+        netVar.ValueChanged += value => Console.WriteLine($"{nameof(netVar)} changed to {value.Value}");
+        list.ValueChanged += delta => Console.WriteLine($"{delta.Type}: ({delta.Index}, {delta.Value.ToString()})");
+
+        DataLoader dataLoader = new DataLoader();
+        dataLoader.RegisterLoader<TextLoader>(".cs");
+
+        dataLoader.LazyCreated += OnLazyCreated;
+
+        string input;
+        do
+        {
+            input = Console.ReadLine();
+            args = input!.Split(' ');
+
+            try
             {
-                payload.ReadBufferSerializable(out UnsafeString unsafeString);
-                Console.WriteLine($"[Client {sender}]: {unsafeString}");
-            });
-
-            NetworkObject networkObject = new NetworkObject(0);
-            Test test = new Test();
-
-            networkObject.AddRpc(test.CallClient);
-            networkObject.AddRpc(test.CallServer);
-            networkObject.AddRpc(test.CallSync);
-
-            var netVar = new NetworkVariable<int>();
-            networkObject.AddVariable(netVar);
-
-            netVar.ValueChanged += value => Console.WriteLine($"{nameof(netVar)} changed to {value}");
-
-            DataLoader dataLoader = new DataLoader();
-            dataLoader.RegisterLoader<TextLoader>(".cs");
-
-            dataLoader.LazyCreated += OnLazyCreated;
-
-            string input;
-            do
-            {
-                input = Console.ReadLine();
-                args = input!.Split(' ');
-
-                try
+                switch (args[0])
                 {
-                    switch (args[0])
+                    case "server":
                     {
-                        case "server":
+                        if (args.Length > 1)
                         {
-                            if (args.Length > 1)
+                            string[] splitAddress = args[1].Split(':');
+
+                            if (splitAddress.Length > 0)
                             {
-                                string[] splitAddress = args[1].Split(':');
-
-                                if (splitAddress.Length > 0)
-                                {
-                                    transport.Config.ListenAddress = splitAddress[0];
-                                }
-
-                                if (splitAddress.Length > 1)
-                                {
-                                    int port = int.Parse(splitAddress[1]);
-                                    transport.Config.Port = port;
-                                }
+                                transport.Config.ListenAddress = splitAddress[0];
                             }
 
-                            networkManager.StartServer();
-                            break;
-                        }
-                        case "client":
-                        {
-                            if (args.Length > 1)
+                            if (splitAddress.Length > 1)
                             {
-                                string[] splitAddress = args[1].Split(':');
+                                int port = int.Parse(splitAddress[1]);
+                                transport.Config.Port = port;
+                            }
+                        }
 
-                                if (splitAddress.Length > 0)
-                                {
-                                    transport.Config.ConnectAddress = splitAddress[0];
-                                }
+                        networkManager.StartServer();
+                        break;
+                    }
+                    case "client":
+                    {
+                        if (args.Length > 1)
+                        {
+                            string[] splitAddress = args[1].Split(':');
 
-                                if (splitAddress.Length > 1)
-                                {
-                                    int port = int.Parse(splitAddress[1]);
-                                    transport.Config.Port = port;
-                                }
+                            if (splitAddress.Length > 0)
+                            {
+                                transport.Config.ConnectAddress = splitAddress[0];
                             }
 
-                            networkManager.StartClient();
-                            break;
-                        }
-                        case "host":
-                        {
-                            if (args.Length > 1)
+                            if (splitAddress.Length > 1)
                             {
-                                string[] splitAddress = args[1].Split(':');
+                                int port = int.Parse(splitAddress[1]);
+                                transport.Config.Port = port;
+                            }
+                        }
 
-                                if (splitAddress.Length > 0)
-                                {
-                                    transport.Config.ListenAddress = splitAddress[0];
-                                }
+                        networkManager.StartClient();
+                        break;
+                    }
+                    case "host":
+                    {
+                        if (args.Length > 1)
+                        {
+                            string[] splitAddress = args[1].Split(':');
 
-                                if (splitAddress.Length > 1)
-                                {
-                                    int port = int.Parse(splitAddress[1]);
-                                    transport.Config.Port = port;
-                                }
+                            if (splitAddress.Length > 0)
+                            {
+                                transport.Config.ListenAddress = splitAddress[0];
                             }
 
-                            networkManager.StartHost();
-                            break;
-                        }
-                        case "stop":
-                        {
-                            networkManager.Shutdown();
-                            break;
-                        }
-                        case "server_rpc":
-                        {
-                            Rpc.ServerRpc(networkObject, test.CallServer);
-                            break;
-                        }
-                        case "client_rpc":
-                        {
-                            Rpc.ClientRpc(networkObject, test.CallClient);
-                            break;
-                        }
-                        case "sync_rpc":
-                        {
-                            int value = 0;
-
-                            if (args.Length > 0)
+                            if (splitAddress.Length > 1)
                             {
-                                value = int.Parse(args[1]);
+                                int port = int.Parse(splitAddress[1]);
+                                transport.Config.Port = port;
                             }
+                        }
 
-                            Rpc.SyncRpc(networkObject, test.CallSync, value);
-                            break;
-                        }
-                        case "var":
-                        {
-                            int value = int.Parse(args[1]);
-                            netVar.Value = value;
-                            break;
-                        }
-                        case "send":
-                        {
-                            using BufferWriter writer = new BufferWriter();
-                            UnsafeString unsafeString = new UnsafeString(args[1]);
-                            writer.WriteBufferSerializable(unsafeString);
+                        networkManager.StartHost();
+                        break;
+                    }
+                    case "stop":
+                    {
+                        networkManager.Shutdown();
+                        break;
+                    }
+                    case "server_rpc":
+                    {
+                        Rpc.ServerRpc(networkObject, test.CallServer);
+                        break;
+                    }
+                    case "client_rpc":
+                    {
+                        Rpc.ClientRpc(networkObject, test.CallClient);
+                        break;
+                    }
+                    case "sync_rpc":
+                    {
+                        int value = 0;
 
-                            networkManager.MessagingSystem.SendMessage("Chat Message", writer,
-                                networkManager.ConnectedClients);
-                            break;
-                        }
-                        case "ping":
+                        if (args.Length > 0)
                         {
-                            int id = int.Parse(args[1]);
-                            Ping(id);
-                            break;
+                            value = int.Parse(args[1]);
                         }
-                        case "read":
-                        {
-                            string path = args[1];
-                            dataLoader.LoadEntry(path);
-                            break;
-                        }
-                        case "read_dir":
-                        {
-                            string path = args[1];
-                            dataLoader.LoadDirectory(path);
-                            break;
-                        }
+
+                        Rpc.SyncRpc(networkObject, test.CallSync, value);
+                        break;
+                    }
+                    case "var":
+                    {
+                        int value = int.Parse(args[1]);
+                        netVar.Value = value;
+                        break;
+                    }
+                    case "send":
+                    {
+                        string value = string.Join(' ', args, 1, args.Length - 1);
+
+                        using BufferWriter writer = new BufferWriter();
+                        UnsafeString unsafeString = new UnsafeString(value);
+                        writer.WriteBufferSerializable(unsafeString);
+
+                        networkManager.MessagingSystem.SendMessage("Chat Message", writer,
+                            networkManager.ConnectedClients);
+                        break;
+                    }
+                    case "ping":
+                    {
+                        int id = int.Parse(args[1]);
+                        Ping(id);
+                        break;
+                    }
+                    case "read":
+                    {
+                        string path = args[1];
+                        dataLoader.LoadEntry(path);
+                        break;
+                    }
+                    case "read_dir":
+                    {
+                        string path = args[1];
+                        dataLoader.LoadDirectory(path);
+                        break;
+                    }
+                    case "add":
+                    {
+                        string value = string.Join(' ', args, 1, args.Length - 1);
+                        list.Add(value);
+                        break;
                     }
                 }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e);
-                }
-            } while (input != "exit");
-        }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+        } while (input != "exit");
+    }
 
-        private static void OnLazyCreated(string path, string namespacedId, Type type)
-        {
-            Console.WriteLine($"Loaded \"{Path.GetFileName(path)}\" with id \"{namespacedId}\" as \"{type.Name}\"");
-        }
+    private static void OnLazyCreated(string path, string namespacedId, Type type)
+    {
+        Console.WriteLine($"Loaded \"{Path.GetFileName(path)}\" with id \"{namespacedId}\" as \"{type.Name}\"");
+    }
 
-        private static async void Ping(int id)
-        {
-            int ping = await NetworkManager.Instance.Ping(id);
-            Console.WriteLine($"Ping to {id} is {ping} ms");
-        }
+    private static async void Ping(int id)
+    {
+        int ping = await NetworkManager.Instance.Ping(id);
+        Console.WriteLine($"Ping to {id} is {ping} ms");
     }
 }

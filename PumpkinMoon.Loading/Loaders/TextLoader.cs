@@ -1,22 +1,21 @@
 ﻿using System;
 using System.IO;
 
-namespace PumpkinMoon.Loading.Loaders
+namespace PumpkinMoon.Loading.Loaders;
+
+public class TextLoader : ILoader
 {
-    public class TextLoader : ILoader
+    public Lazy LazyLoad(Stream stream, out Type type)
     {
-        public Lazy LazyLoad(Stream stream, out Type type)
+        type = typeof(string);
+
+        return new Lazy(() =>
         {
-            type = typeof(string);
+            using TextReader textReader = new StreamReader(stream);
+            string result = textReader.ReadToEnd();
+            stream.Dispose();
 
-            return new Lazy(() =>
-            {
-                using TextReader textReader = new StreamReader(stream);
-                string result = textReader.ReadToEnd();
-                stream.Dispose();
-
-                return result;
-            });
-        }
+            return result;
+        });
     }
 }

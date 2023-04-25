@@ -2,46 +2,45 @@
 using System.Text;
 using PumpkinMoon.Core.Serialization.Buffer;
 
-namespace PumpkinMoon.Core.Unsafe
+namespace PumpkinMoon.Core.Unsafe;
+
+public unsafe struct UnsafeString : IBufferSerializable, IDisposable
 {
-    public unsafe struct UnsafeString : IBufferSerializable, IDisposable
+    private UnsafeArray<byte> array;
+
+    public int Length => array.Length;
+
+    public UnsafeString(string value)
     {
-        private UnsafeArray<byte> array;
+        int length = Encoding.UTF8.GetByteCount(value);
+        array = new UnsafeArray<byte>(length);
 
-        public int Length => array.Length;
+        char* pointer = UnsafeUtils.GetPointer(value);
+        Encoding.UTF8.GetBytes(pointer, value.Length, array.Pointer, length);
+    }
 
-        public UnsafeString(string value)
-        {
-            int length = Encoding.UTF8.GetByteCount(value);
-            array = new UnsafeArray<byte>(length);
+    public static implicit operator UnsafeString(string value)
+    {
+        return new UnsafeString(value);
+    }
 
-            char* pointer = UnsafeUtils.GetPointer(value);
-            Encoding.UTF8.GetBytes(pointer, value.Length, array.Pointer, length);
-        }
+    public static explicit operator string(UnsafeString value)
+    {
+        return Encoding.UTF8.GetString(value.array.Pointer, value.array.Length);
+    }
 
-        public static implicit operator UnsafeString(string value)
-        {
-            return new UnsafeString(value);
-        }
+    public void BufferSerialize<T>(ref T buffer) where T : IReaderWriter
+    {
+        buffer.SerializeBufferSerializable(ref array);
+    }
 
-        public static explicit operator string(UnsafeString value)
-        {
-            return Encoding.UTF8.GetString(value.array.Pointer, value.array.Length);
-        }
+    public override string ToString()
+    {
+        return (string)this;
+    }
 
-        public void BufferSerialize<T>(ref T buffer) where T : IReaderWriter
-        {
-            buffer.SerializeBufferSerializable(ref array);
-        }
-
-        public override string ToString()
-        {
-            return (string)this;
-        }
-
-        public void Dispose()
-        {
-            array.Dispose();
-        }
+    public void Dispose()
+    {
+        array.Dispose();
     }
 }

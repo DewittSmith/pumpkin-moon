@@ -1,11 +1,10 @@
-﻿namespace PumpkinMoon.Networking.Messaging
+﻿namespace PumpkinMoon.Networking.Messaging;
+
+internal enum MessageType : byte
 {
-    internal enum MessageType : byte
-    {
-        Connect,
-        Disconnect,
-        Named,
-        Rpc,
-        Variable
-    }
+    Connect,
+    Disconnect,
+    Named,
+    Rpc,
+    Variable
 }

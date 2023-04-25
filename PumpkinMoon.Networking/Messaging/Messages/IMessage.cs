@@ -1,9 +1,8 @@
 ﻿using PumpkinMoon.Core.Serialization.Buffer;
 
-namespace PumpkinMoon.Networking.Messaging.Messages
+namespace PumpkinMoon.Networking.Messaging.Messages;
+
+internal interface IMessage : IBufferSerializable
 {
-    internal interface IMessage : IBufferSerializable
-    {
-        MessageType MessageType { get; }
-    }
+    MessageType MessageType { get; }
 }
