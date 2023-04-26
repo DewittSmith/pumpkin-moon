@@ -11,7 +11,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PumpkinMoon.Networking", ".
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PumpkinMoon.Loading", "..\PumpkinMoon.Loading\PumpkinMoon.Loading.csproj", "{BD57B876-016B-411E-BA65-0121D9A7E63D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PumpkinMoon.Multithreading", "..\PumpkinMoon.Multithreading\PumpkinMoon.Multithreading\PumpkinMoon.Multithreading.csproj", "{F94754F5-DE33-409A-BCDF-AD047CECB9A3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PumpkinMoon.Threading", "..\PumpkinMoon.Multithreading\PumpkinMoon.Threading\PumpkinMoon.Threading.csproj", "{F94754F5-DE33-409A-BCDF-AD047CECB9A3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
