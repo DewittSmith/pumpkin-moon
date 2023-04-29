@@ -22,7 +22,7 @@ public class DataLoader
 
     public DataLoader()
     {
-        namespacedIdProvider = new DefaultNamespaceIdProvider();
+        namespacedIdProvider = new DefaultNameProvider();
         directoryEnumerator = new DefaultDirectoryEnumerator();
         fileReader = new DefaultFileReader();
     }
@@ -31,7 +31,7 @@ public class DataLoader
         IDirectoryEnumerator directoryEnumerator = null,
         IFileReader fileReader = null)
     {
-        this.namespacedIdProvider = namespacedIdProvider ?? new DefaultNamespaceIdProvider();
+        this.namespacedIdProvider = namespacedIdProvider ?? new DefaultNameProvider();
         this.directoryEnumerator = directoryEnumerator ?? new DefaultDirectoryEnumerator();
         this.fileReader = fileReader ?? new DefaultFileReader();
     }
