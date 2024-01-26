@@ -10,6 +10,11 @@ public struct BufferWriter : IReaderWriter, IDisposable
     public int Length => stream.Length;
     public int Position => stream.Position;
 
+    public BufferWriter(ArraySegment<byte> buffer)
+    {
+        stream = new UnsafeStream(buffer);
+    }
+
     public byte[] ToArray()
     {
         return stream.ToArray();
